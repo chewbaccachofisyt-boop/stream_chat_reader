@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-scale, initial-scale=1.0">
     <title>Stream Chat Reader - TTS Web</title>
     <style>
         body {
@@ -58,7 +58,6 @@
         .btn-both { background: #10b981; }
         .btn-stop { background: #ef4444; }
     </style>
-    <!-- Agregamos Socket.IO -->
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 </head>
 <body>
@@ -83,14 +82,16 @@
 </div>
 
 <script>
-let isReading = false;
 let youtubeInterval = null;
 let messageQueue = [];
 let isSpeaking = false;
 
+// --- VOZ ---
 function speak(text) {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1; utterance.pitch = 1; utterance.volume = 1;
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
     isSpeaking = true;
     utterance.onend = () => { isSpeaking = false; processQueue(); };
     speechSynthesis.speak(utterance);
@@ -98,16 +99,18 @@ function speak(text) {
 function addToQueue(text){ messageQueue.push(text); if(!isSpeaking) processQueue(); }
 function processQueue(){ if(messageQueue.length>0 && !isSpeaking) speak(messageQueue.shift()); }
 
+// --- CHAT VISUAL ---
 function addChatMessage(platform, username, message){
     const div = document.createElement('div');
     div.className = `chat-message chat-${platform.toLowerCase()}`;
     div.innerHTML = `<b>[${platform}] ${username}</b>: ${message}`;
-    document.getElementById('chatContainer').appendChild(div);
-    document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
+    const container = document.getElementById('chatContainer');
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
     if (platform !== 'SISTEMA') addToQueue(`${username} dice: ${message}`);
 }
 
-// YouTube
+// --- YOUTUBE ---
 async function startYouTube(){
     const apiKey = document.getElementById('youtubeKey').value.trim();
     if(!apiKey){ alert('Falta la API Key de YouTube'); return; }
@@ -116,34 +119,54 @@ async function startYouTube(){
         const broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
         const res = await fetch(broadcastUrl);
         const data = await res.json();
-        if(!data.items || data.items.length===0){ addChatMessage('SISTEMA','YouTube','❌ No estás en vivo'); return; }
+        if(!data.items || data.items.length===0){ 
+            addChatMessage('SISTEMA','YouTube','❌ No estás en vivo'); 
+            return; 
+        }
         const liveChatId = data.items[0].snippet.liveChatId;
         addChatMessage('SISTEMA','YouTube','✅ Conectado al chat en vivo');
         async function fetchChat(){
             const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
-            const r = await fetch(chatUrl); const d = await r.json();
-            if(d.items) d.items.forEach(i=>addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage));
+            const r = await fetch(chatUrl); 
+            const d = await r.json();
+            if(d.items) d.items.forEach(i => 
+                addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage)
+            );
             youtubeInterval = setTimeout(fetchChat, (d.pollingIntervalMillis||5000));
         }
         fetchChat();
     }catch(e){ addChatMessage('SISTEMA','ERROR',e.message); }
 }
 
-// TikTok via backend
+// --- TIKTOK ---
 async function startTikTok(){
     const username = document.getElementById('tiktokUser').value.trim();
     if(!username){ alert('Falta el usuario de TikTok'); return; }
+
     addChatMessage('SISTEMA','TikTok','Verificando estado en vivo...');
     try{
+        // 1️⃣ Verificar si está en vivo
         const res = await fetch('https://tiktok-chat-server.onrender.com/api/check-live', {
-            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username})
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({username})
         });
         const data = await res.json();
+
         if(data.isLive){
-            addChatMessage('SISTEMA','TikTok','✅ Usuario está en vivo, conectando chat...');
+            addChatMessage('SISTEMA','TikTok','✅ Usuario está en vivo, iniciando conexión...');
             
-            // Usamos Socket.IO
-            const socket = io('https://tiktok-chat-server.onrender.com', { transports: ['websocket'] });
+            // 2️⃣ Iniciar la conexión en el backend
+            await fetch('https://tiktok-chat-server.onrender.com/api/start-chat', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({username})
+            });
+
+            // 3️⃣ Escuchar eventos desde Socket.IO
+            const socket = io('https://tiktok-chat-server.onrender.com', {
+                transports: ['websocket', 'polling']
+            });
 
             socket.on('connect', () => {
                 addChatMessage('SISTEMA', 'TikTok', '🟢 Conectado al servidor WebSocket');
@@ -171,9 +194,12 @@ async function startTikTok(){
         } else {
             addChatMessage('SISTEMA','TikTok','❌ No está en vivo');
         }
-    }catch(err){ addChatMessage('SISTEMA','ERROR',err.message); }
+    }catch(err){
+        addChatMessage('SISTEMA','ERROR',err.message);
+    }
 }
 
+// --- DETENER ---
 function stopAll(){
     if(youtubeInterval) clearTimeout(youtubeInterval);
     youtubeInterval=null; speechSynthesis.cancel();
@@ -181,9 +207,10 @@ function stopAll(){
     addChatMessage('SISTEMA','SISTEMA','⏹️ Lectura detenida');
 }
 
+// --- EVENTOS BOTONES ---
 document.getElementById('btnYoutube').onclick=startYouTube;
 document.getElementById('btnTiktok').onclick=startTikTok;
-document.getElementById('btnBoth').onclick=()=>{startYouTube(); startTikTok();};
+document.getElementById('btnBoth').onclick=()=>{ startYouTube(); startTikTok(); };
 document.getElementById('btnStop').onclick=stopAll;
 </script>
 </body>
