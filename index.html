@@ -5,15 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stream Chat Reader - TTS Web</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
-        .chat-container { background: #1e1e1e; border-radius: 15px; padding: 20px; height: 400px; overflow-y: auto; color: #fff; font-family: monospace; }
-        .chat-message { margin-bottom: 10px; padding: 8px 12px; border-left: 4px solid #667eea; background: rgba(255,255,255,0.05); border-radius: 8px; }
-        .chat-youtube { border-left-color: #FF0000; } .chat-tiktok { border-left-color: #00f2ea; }
-        .btn { padding: 15px 25px; border: none; border-radius: 10px; cursor: pointer; font-size: 1em; color: white; font-weight: bold; }
-        .btn-youtube { background: #FF0000; } .btn-tiktok { background: #000; } .btn-both { background: #10b981; } .btn-stop { background: #ef4444; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .chat-container {
+            background: #1e1e1e;
+            border-radius: 15px;
+            padding: 20px;
+            height: 400px;
+            overflow-y: auto;
+            color: #fff;
+            font-family: monospace;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-left: 4px solid #667eea;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        .chat-youtube { border-left-color: #FF0000; }
+        .chat-tiktok { border-left-color: #00f2ea; }
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            color: white;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .btn-youtube { background: #FF0000; }
+        .btn-tiktok { background: #000; }
+        .btn-both { background: #10b981; }
+        .btn-stop { background: #ef4444; }
     </style>
+    <!-- Agregamos Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -26,10 +72,12 @@
         <input id="youtubeKey" placeholder="Tu API Key" style="width:100%;padding:10px;margin-bottom:10px;"><br>
         <label>TikTok Username:</label><br>
         <input id="tiktokUser" placeholder="Tu usuario de TikTok" style="width:100%;padding:10px;margin-bottom:20px;"><br>
+
         <button class="btn btn-youtube" id="btnYoutube">▶️ Iniciar YouTube</button>
         <button class="btn btn-tiktok" id="btnTiktok">▶️ Iniciar TikTok</button>
         <button class="btn btn-both" id="btnBoth">▶️ Iniciar Ambos</button>
         <button class="btn btn-stop" id="btnStop">⏹️ Detener</button>
+
         <div id="chatContainer" class="chat-container" style="margin-top:20px;"></div>
     </div>
 </div>
@@ -55,7 +103,8 @@ function addChatMessage(platform, username, message){
     div.className = `chat-message chat-${platform.toLowerCase()}`;
     div.innerHTML = `<b>[${platform}] ${username}</b>: ${message}`;
     document.getElementById('chatContainer').appendChild(div);
-    addToQueue(`${username} dice: ${message}`);
+    document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
+    if (platform !== 'SISTEMA') addToQueue(`${username} dice: ${message}`);
 }
 
 // YouTube
@@ -65,7 +114,8 @@ async function startYouTube(){
     addChatMessage('SISTEMA','YouTube','Conectando al chat...');
     try{
         const broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
-        const res = await fetch(broadcastUrl); const data = await res.json();
+        const res = await fetch(broadcastUrl);
+        const data = await res.json();
         if(!data.items || data.items.length===0){ addChatMessage('SISTEMA','YouTube','❌ No estás en vivo'); return; }
         const liveChatId = data.items[0].snippet.liveChatId;
         addChatMessage('SISTEMA','YouTube','✅ Conectado al chat en vivo');
@@ -91,9 +141,33 @@ async function startTikTok(){
         const data = await res.json();
         if(data.isLive){
             addChatMessage('SISTEMA','TikTok','✅ Usuario está en vivo, conectando chat...');
-            const ws = new WebSocket('wss://tiktok-chat-server.onrender.com');
-            ws.onmessage = (e)=>{ const m=JSON.parse(e.data); addChatMessage('TikTok', m.username||'usuario', m.message||''); };
-            ws.onerror = ()=>addChatMessage('SISTEMA','TikTok','⚠️ Error de conexión WebSocket');
+            
+            // Usamos Socket.IO
+            const socket = io('https://tiktok-chat-server.onrender.com', { transports: ['websocket'] });
+
+            socket.on('connect', () => {
+                addChatMessage('SISTEMA', 'TikTok', '🟢 Conectado al servidor WebSocket');
+            });
+
+            socket.on('tiktok-message', (msg) => {
+                addChatMessage('TikTok', msg.username || msg.nickname || 'usuario', msg.message || msg.comment || '');
+            });
+
+            socket.on('tiktok-join', (msg) => {
+                addChatMessage('TikTok', msg.username || 'usuario', '👋 se unió al stream');
+            });
+
+            socket.on('tiktok-like', (msg) => {
+                addChatMessage('TikTok', msg.username || 'usuario', `❤️ dio ${msg.likeCount} likes`);
+            });
+
+            socket.on('tiktok-gift', (msg) => {
+                addChatMessage('TikTok', msg.username || 'usuario', `🎁 envió ${msg.giftCount}x ${msg.giftName}`);
+            });
+
+            socket.on('disconnect', () => {
+                addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado del servidor');
+            });
         } else {
             addChatMessage('SISTEMA','TikTok','❌ No está en vivo');
         }
