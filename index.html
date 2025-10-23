@@ -278,6 +278,39 @@
             <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="1" style="width: 100%;">
             <span id="volumeValue" style="color: #888; font-size: 0.9rem;">100%</span>
         </div>
+
+        <div class="input-group">
+            <label>Filtros de TikTok:</label>
+            <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="enableLikes" checked style="width: auto; cursor: pointer;">
+                    <span style="color: #e5e5e5;">Anunciar Likes</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="enableGifts" checked style="width: auto; cursor: pointer;">
+                    <span style="color: #e5e5e5;">Anunciar Regalos</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Límite mínimo de Likes para anunciar:</label>
+            <input type="number" id="minLikes" value="5" min="1" max="1000" style="width: 150px;">
+            <span style="color: #888; font-size: 0.9rem; margin-left: 10px;">likes</span>
+        </div>
+
+        <div class="input-group">
+            <label>Filtro Anti-Spam:</label>
+            <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="enableSpamFilter" checked style="width: auto; cursor: pointer;">
+                    <span style="color: #e5e5e5;">Activar filtro de spam</span>
+                </label>
+            </div>
+            <span style="color: #888; font-size: 0.85rem; margin-top: 8px; display: block;">
+                Bloquea: letras repetidas (AAAAA), patrones spam (XDXDXD), mensajes duplicados
+            </span>
+        </div>
     </div>
 
     <div class="section">
@@ -304,6 +337,7 @@ let selectedVoice = null;
 let availableVoices = [];
 let messageCount = 0;
 let tiktokSocket = null;
+let userMessageCache = new Map(); // Para filtro anti-spam
 
 // --- CARGAR VOCES ---
 function loadVoices() {
@@ -386,6 +420,49 @@ function processQueue() {
 
 // --- CHAT VISUAL ---
 function addChatMessage(platform, username, message) {
+    // Filtro anti-spam
+    if (platform !== 'SISTEMA' && document.getElementById('enableSpamFilter').checked) {
+        // Detectar spam de letras repetidas (ej: AAAAAA, XDXDXD, jajajaja)
+        const hasSpamPattern = (text) => {
+            // Detectar 4+ letras/dígitos iguales seguidos (AAAA, 1111)
+            if (/(.)\1{3,}/i.test(text)) return true;
+            
+            // Detectar patrones repetidos 3+ veces (XDXDXD, jajaja, 123123123)
+            if (/(.{2,})\1{2,}/i.test(text)) return true;
+            
+            // Detectar emojis repetidos 5+ veces
+            if (/(\p{Emoji})\1{4,}/u.test(text)) return true;
+            
+            return false;
+        };
+        
+        if (hasSpamPattern(message)) {
+            console.log('Spam detectado:', message);
+            return; // Ignorar mensaje con spam
+        }
+        
+        // Filtro de mensajes duplicados del mismo usuario
+        const userKey = `${platform}-${username}`;
+        const now = Date.now();
+        
+        if (userMessageCache.has(userKey)) {
+            const lastMessage = userMessageCache.get(userKey);
+            // Si el mismo usuario envió el mismo mensaje hace menos de 5 segundos, ignorar
+            if (lastMessage.text === message && (now - lastMessage.time) < 5000) {
+                return; // Spam detectado, no mostrar
+            }
+        }
+        
+        userMessageCache.set(userKey, { text: message, time: now });
+        
+        // Limpiar caché viejo (más de 10 segundos)
+        for (let [key, value] of userMessageCache.entries()) {
+            if (now - value.time > 10000) {
+                userMessageCache.delete(key);
+            }
+        }
+    }
+    
     const div = document.createElement('div');
     div.className = `chat-message chat-${platform.toLowerCase()}`;
     div.innerHTML = `
@@ -501,11 +578,20 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-like', (msg) => {
-                addChatMessage('TikTok', msg.username || 'usuario', `❤️ dio ${msg.likeCount} likes`);
+                const minLikes = parseInt(document.getElementById('minLikes').value) || 5;
+                const likesEnabled = document.getElementById('enableLikes').checked;
+                
+                if (likesEnabled && msg.likeCount >= minLikes) {
+                    addChatMessage('TikTok', msg.username || 'usuario', `❤️ dio ${msg.likeCount} likes`);
+                }
             });
 
             tiktokSocket.on('tiktok-gift', (msg) => {
-                addChatMessage('TikTok', msg.username || 'usuario', `🎁 envió ${msg.giftCount}x ${msg.giftName}`);
+                const giftsEnabled = document.getElementById('enableGifts').checked;
+                
+                if (giftsEnabled) {
+                    addChatMessage('TikTok', msg.username || 'usuario', `🎁 envió ${msg.giftCount}x ${msg.giftName}`);
+                }
             });
 
             tiktokSocket.on('disconnect', () => {
