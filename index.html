@@ -2,61 +2,228 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-scale, initial-scale=1.0">
-    <title>Stream Chat Reader - TTS Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Chat Reader</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: #141414;
+            color: #fff;
             min-height: 100vh;
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
         }
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
+            margin-bottom: 40px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+        .section {
+            background: #1f1f1f;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            font-weight: 600;
+            color: #e5e5e5;
+        }
+        .input-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #b3b3b3;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #e50914;
+            background: #2a2a2a;
+        }
+        .voice-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .voice-option {
+            background: #333;
+            padding: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
             text-align: center;
         }
+        .voice-option:hover {
+            background: #404040;
+            transform: translateY(-2px);
+        }
+        .voice-option.active {
+            border-color: #e50914;
+            background: #2a1a1a;
+        }
+        .voice-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .voice-lang {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 150px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-youtube {
+            background: #ff0000;
+            color: white;
+        }
+        .btn-youtube:hover { background: #cc0000; }
+        .btn-tiktok {
+            background: #00f2ea;
+            color: #000;
+        }
+        .btn-tiktok:hover { background: #00c2bc; }
+        .btn-both {
+            background: #10b981;
+            color: white;
+        }
+        .btn-both:hover { background: #059669; }
+        .btn-stop {
+            background: #555;
+            color: white;
+        }
+        .btn-stop:hover { background: #e50914; }
         .chat-container {
-            background: #1e1e1e;
-            border-radius: 15px;
-            padding: 20px;
-            height: 400px;
+            background: #0a0a0a;
+            border-radius: 8px;
+            height: 500px;
             overflow-y: auto;
-            color: #fff;
-            font-family: monospace;
+            padding: 20px;
+        }
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-container::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: #666;
         }
         .chat-message {
-            margin-bottom: 10px;
-            padding: 8px 12px;
-            border-left: 4px solid #667eea;
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid #666;
+            animation: slideIn 0.3s ease;
         }
-        .chat-youtube { border-left-color: #FF0000; }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .chat-youtube { border-left-color: #ff0000; }
         .chat-tiktok { border-left-color: #00f2ea; }
-        .btn {
-            padding: 15px 25px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1em;
-            color: white;
-            font-weight: bold;
-            margin: 5px;
+        .chat-sistema { border-left-color: #10b981; }
+        .chat-username {
+            font-weight: 600;
+            margin-right: 8px;
+            color: #e5e5e5;
         }
-        .btn-youtube { background: #FF0000; }
-        .btn-tiktok { background: #000; }
-        .btn-both { background: #10b981; }
-        .btn-stop { background: #ef4444; }
+        .chat-platform {
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-right: 8px;
+        }
+        .chat-text {
+            color: #b3b3b3;
+        }
+        .status-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            flex: 1;
+            background: #2a2a2a;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .status-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .status-active { color: #10b981; }
+        .status-inactive { color: #888; }
     </style>
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 </head>
@@ -64,20 +231,68 @@
 <div class="container">
     <div class="header">
         <h1>🎙️ Stream Chat Reader</h1>
-        <p>Lee tus chats de YouTube y TikTok en voz alta mientras juegas</p>
+        <p class="subtitle">Lee tus chats de YouTube y TikTok en voz alta mientras juegas</p>
     </div>
-    <div style="padding:20px;">
-        <label>YouTube API Key:</label><br>
-        <input id="youtubeKey" placeholder="Tu API Key" style="width:100%;padding:10px;margin-bottom:10px;"><br>
-        <label>TikTok Username:</label><br>
-        <input id="tiktokUser" placeholder="Tu usuario de TikTok" style="width:100%;padding:10px;margin-bottom:20px;"><br>
 
-        <button class="btn btn-youtube" id="btnYoutube">▶️ Iniciar YouTube</button>
-        <button class="btn btn-tiktok" id="btnTiktok">▶️ Iniciar TikTok</button>
-        <button class="btn btn-both" id="btnBoth">▶️ Iniciar Ambos</button>
-        <button class="btn btn-stop" id="btnStop">⏹️ Detener</button>
+    <div class="status-bar">
+        <div class="status-item">
+            <div class="status-label">YouTube</div>
+            <div class="status-value status-inactive" id="statusYoutube">●</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">TikTok</div>
+            <div class="status-value status-inactive" id="statusTiktok">●</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">Mensajes Leídos</div>
+            <div class="status-value" id="messageCount">0</div>
+        </div>
+    </div>
 
-        <div id="chatContainer" class="chat-container" style="margin-top:20px;"></div>
+    <div class="section">
+        <div class="section-title">⚙️ Configuración</div>
+        
+        <div class="input-group">
+            <label>YouTube API Key:</label>
+            <input id="youtubeKey" type="password" placeholder="Ingresa tu API Key de YouTube">
+        </div>
+        
+        <div class="input-group">
+            <label>TikTok Username:</label>
+            <input id="tiktokUser" placeholder="Ingresa tu usuario de TikTok">
+        </div>
+
+        <div class="input-group">
+            <label>Selecciona la Voz:</label>
+            <div class="voice-selector" id="voiceSelector"></div>
+        </div>
+
+        <div class="input-group">
+            <label>Velocidad de Voz:</label>
+            <input type="range" id="voiceRate" min="0.5" max="2" step="0.1" value="1" style="width: 100%;">
+            <span id="rateValue" style="color: #888; font-size: 0.9rem;">1.0x</span>
+        </div>
+
+        <div class="input-group">
+            <label>Volumen de Voz:</label>
+            <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="1" style="width: 100%;">
+            <span id="volumeValue" style="color: #888; font-size: 0.9rem;">100%</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🎮 Controles</div>
+        <div class="controls">
+            <button class="btn btn-youtube" id="btnYoutube">▶️ YouTube</button>
+            <button class="btn btn-tiktok" id="btnTiktok">▶️ TikTok</button>
+            <button class="btn btn-both" id="btnBoth">▶️ Ambos</button>
+            <button class="btn btn-stop" id="btnStop">⏹️ Detener</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">💬 Chat en Vivo</div>
+        <div id="chatContainer" class="chat-container"></div>
     </div>
 </div>
 
@@ -85,133 +300,255 @@
 let youtubeInterval = null;
 let messageQueue = [];
 let isSpeaking = false;
+let selectedVoice = null;
+let availableVoices = [];
+let messageCount = 0;
+let tiktokSocket = null;
+
+// --- CARGAR VOCES ---
+function loadVoices() {
+    availableVoices = speechSynthesis.getVoices();
+    const voiceSelector = document.getElementById('voiceSelector');
+    voiceSelector.innerHTML = '';
+
+
+
+    const spanishOnly = availableVoices.filter(v => v.lang.startsWith('es'));
+    
+    spanishOnly.forEach((voice, index) => {
+        const div = document.createElement('div');
+        div.className = 'voice-option';
+        if (index === 0) {
+            div.classList.add('active');
+            selectedVoice = voice;
+        }
+        
+        // Extraer el nombre real de la voz (sin "Microsoft" o "Google")
+        let displayName = voice.name;
+        
+        // Quitar "Microsoft", "Google", "Apple", etc.
+        displayName = displayName.replace(/^(Microsoft|Google|Apple|Android)\s+/i, '');
+        
+        // Si el nombre tiene guiones o paréntesis, limpiarlos
+        displayName = displayName.replace(/\s*\(.*?\)\s*/g, '').trim();
+        
+        // Si queda muy largo, tomar solo la primera parte
+        if (displayName.length > 20) {
+            displayName = displayName.split('-')[0].trim();
+        }
+        
+        div.innerHTML = `
+            <div class="voice-name">${displayName}</div>
+            <div class="voice-lang">${voice.lang}</div>
+        `;
+        div.onclick = () => {
+            document.querySelectorAll('.voice-option').forEach(el => el.classList.remove('active'));
+            div.classList.add('active');
+            selectedVoice = voice;
+        };
+        voiceSelector.appendChild(div);
+    });
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+// --- VELOCIDAD Y VOLUMEN DE VOZ ---
+document.getElementById('voiceRate').oninput = (e) => {
+    document.getElementById('rateValue').textContent = e.target.value + 'x';
+};
+
+document.getElementById('voiceVolume').oninput = (e) => {
+    const percentage = Math.round(e.target.value * 100);
+    document.getElementById('volumeValue').textContent = percentage + '%';
+};
 
 // --- VOZ ---
 function speak(text) {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
+    utterance.voice = selectedVoice;
+    utterance.rate = parseFloat(document.getElementById('voiceRate').value);
     utterance.pitch = 1;
-    utterance.volume = 1;
+    utterance.volume = parseFloat(document.getElementById('voiceVolume').value);
     isSpeaking = true;
     utterance.onend = () => { isSpeaking = false; processQueue(); };
     speechSynthesis.speak(utterance);
 }
-function addToQueue(text){ messageQueue.push(text); if(!isSpeaking) processQueue(); }
-function processQueue(){ if(messageQueue.length>0 && !isSpeaking) speak(messageQueue.shift()); }
+
+function addToQueue(text) {
+    messageQueue.push(text);
+    if (!isSpeaking) processQueue();
+}
+
+function processQueue() {
+    if (messageQueue.length > 0 && !isSpeaking) speak(messageQueue.shift());
+}
 
 // --- CHAT VISUAL ---
-function addChatMessage(platform, username, message){
+function addChatMessage(platform, username, message) {
     const div = document.createElement('div');
     div.className = `chat-message chat-${platform.toLowerCase()}`;
-    div.innerHTML = `<b>[${platform}] ${username}</b>: ${message}`;
+    div.innerHTML = `
+        <span class="chat-platform">[${platform}]</span>
+        <span class="chat-username">${username}</span>
+        <span class="chat-text">${message}</span>
+    `;
     const container = document.getElementById('chatContainer');
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
-    if (platform !== 'SISTEMA') addToQueue(`${username} dice: ${message}`);
+    
+    if (platform !== 'SISTEMA') {
+        addToQueue(`${username} dice: ${message}`);
+        messageCount++;
+        document.getElementById('messageCount').textContent = messageCount;
+    }
 }
 
 // --- YOUTUBE ---
-async function startYouTube(){
+async function startYouTube() {
     const apiKey = document.getElementById('youtubeKey').value.trim();
-    if(!apiKey){ alert('Falta la API Key de YouTube'); return; }
-    addChatMessage('SISTEMA','YouTube','Conectando al chat...');
-    try{
+    if (!apiKey) {
+        alert('Falta la API Key de YouTube');
+        return;
+    }
+    
+    document.getElementById('statusYoutube').className = 'status-value status-active';
+    addChatMessage('SISTEMA', 'YouTube', 'Conectando al chat...');
+    
+    try {
         const broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
         const res = await fetch(broadcastUrl);
         const data = await res.json();
-        if(!data.items || data.items.length===0){ 
-            addChatMessage('SISTEMA','YouTube','❌ No estás en vivo'); 
-            return; 
+        
+        if (!data.items || data.items.length === 0) {
+            addChatMessage('SISTEMA', 'YouTube', '❌ No estás en vivo');
+            document.getElementById('statusYoutube').className = 'status-value status-inactive';
+            return;
         }
+        
         const liveChatId = data.items[0].snippet.liveChatId;
-        addChatMessage('SISTEMA','YouTube','✅ Conectado al chat en vivo');
-        async function fetchChat(){
+        addChatMessage('SISTEMA', 'YouTube', '✅ Conectado al chat en vivo');
+        
+        let lastMessageId = null;
+        
+        async function fetchChat() {
             const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
-            const r = await fetch(chatUrl); 
+            const r = await fetch(chatUrl);
             const d = await r.json();
-            if(d.items) d.items.forEach(i => 
-                addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage)
-            );
-            youtubeInterval = setTimeout(fetchChat, (d.pollingIntervalMillis||5000));
+            
+            if (d.items) {
+                d.items.forEach(i => {
+                    if (i.id !== lastMessageId) {
+                        addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage);
+                        lastMessageId = i.id;
+                    }
+                });
+            }
+            
+            youtubeInterval = setTimeout(fetchChat, (d.pollingIntervalMillis || 5000));
         }
+        
         fetchChat();
-    }catch(e){ addChatMessage('SISTEMA','ERROR',e.message); }
+    } catch (e) {
+        addChatMessage('SISTEMA', 'ERROR', e.message);
+        document.getElementById('statusYoutube').className = 'status-value status-inactive';
+    }
 }
 
 // --- TIKTOK ---
-async function startTikTok(){
+async function startTikTok() {
     const username = document.getElementById('tiktokUser').value.trim();
-    if(!username){ alert('Falta el usuario de TikTok'); return; }
+    if (!username) {
+        alert('Falta el usuario de TikTok');
+        return;
+    }
 
-    addChatMessage('SISTEMA','TikTok','Verificando estado en vivo...');
-    try{
-        // 1️⃣ Verificar si está en vivo
+    document.getElementById('statusTiktok').className = 'status-value status-active';
+    addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
+    
+    try {
         const res = await fetch('https://tiktok-chat-server.onrender.com/api/check-live', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({username})
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
         });
         const data = await res.json();
 
-        if(data.isLive){
-            addChatMessage('SISTEMA','TikTok','✅ Usuario está en vivo, iniciando conexión...');
+        if (data.isLive) {
+            addChatMessage('SISTEMA', 'TikTok', '✅ Usuario está en vivo, iniciando conexión...');
             
-            // 2️⃣ Iniciar la conexión en el backend
             await fetch('https://tiktok-chat-server.onrender.com/api/start-chat', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({username})
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
             });
 
-            // 3️⃣ Escuchar eventos desde Socket.IO
-            const socket = io('https://tiktok-chat-server.onrender.com', {
+            tiktokSocket = io('https://tiktok-chat-server.onrender.com', {
                 transports: ['websocket', 'polling']
             });
 
-            socket.on('connect', () => {
+            tiktokSocket.on('connect', () => {
                 addChatMessage('SISTEMA', 'TikTok', '🟢 Conectado al servidor WebSocket');
             });
 
-            socket.on('tiktok-message', (msg) => {
+            tiktokSocket.on('tiktok-message', (msg) => {
                 addChatMessage('TikTok', msg.username || msg.nickname || 'usuario', msg.message || msg.comment || '');
             });
 
-            socket.on('tiktok-join', (msg) => {
-                addChatMessage('TikTok', msg.username || 'usuario', '👋 se unió al stream');
+            tiktokSocket.on('tiktok-join', (msg) => {
+                // Comentado para no mostrar mensajes de unión
+                // addChatMessage('TikTok', msg.username || 'usuario', '👋 se unió al stream');
             });
 
-            socket.on('tiktok-like', (msg) => {
+            tiktokSocket.on('tiktok-like', (msg) => {
                 addChatMessage('TikTok', msg.username || 'usuario', `❤️ dio ${msg.likeCount} likes`);
             });
 
-            socket.on('tiktok-gift', (msg) => {
+            tiktokSocket.on('tiktok-gift', (msg) => {
                 addChatMessage('TikTok', msg.username || 'usuario', `🎁 envió ${msg.giftCount}x ${msg.giftName}`);
             });
 
-            socket.on('disconnect', () => {
+            tiktokSocket.on('disconnect', () => {
                 addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado del servidor');
+                document.getElementById('statusTiktok').className = 'status-value status-inactive';
             });
         } else {
-            addChatMessage('SISTEMA','TikTok','❌ No está en vivo');
+            addChatMessage('SISTEMA', 'TikTok', '❌ No está en vivo');
+            document.getElementById('statusTiktok').className = 'status-value status-inactive';
         }
-    }catch(err){
-        addChatMessage('SISTEMA','ERROR',err.message);
+    } catch (err) {
+        addChatMessage('SISTEMA', 'ERROR', err.message);
+        document.getElementById('statusTiktok').className = 'status-value status-inactive';
     }
 }
 
 // --- DETENER ---
-function stopAll(){
-    if(youtubeInterval) clearTimeout(youtubeInterval);
-    youtubeInterval=null; speechSynthesis.cancel();
-    document.getElementById('chatContainer').innerHTML='';
-    addChatMessage('SISTEMA','SISTEMA','⏹️ Lectura detenida');
+function stopAll() {
+    if (youtubeInterval) clearTimeout(youtubeInterval);
+    if (tiktokSocket) tiktokSocket.disconnect();
+    
+    youtubeInterval = null;
+    tiktokSocket = null;
+    speechSynthesis.cancel();
+    messageQueue = [];
+    
+    document.getElementById('statusYoutube').className = 'status-value status-inactive';
+    document.getElementById('statusTiktok').className = 'status-value status-inactive';
+    document.getElementById('chatContainer').innerHTML = '';
+    messageCount = 0;
+    document.getElementById('messageCount').textContent = '0';
+    
+    addChatMessage('SISTEMA', 'SISTEMA', '⏹️ Lectura detenida');
 }
 
 // --- EVENTOS BOTONES ---
-document.getElementById('btnYoutube').onclick=startYouTube;
-document.getElementById('btnTiktok').onclick=startTikTok;
-document.getElementById('btnBoth').onclick=()=>{ startYouTube(); startTikTok(); };
-document.getElementById('btnStop').onclick=stopAll;
+document.getElementById('btnYoutube').onclick = startYouTube;
+document.getElementById('btnTiktok').onclick = startTikTok;
+document.getElementById('btnBoth').onclick = () => {
+    startYouTube();
+    startTikTok();
+};
+document.getElementById('btnStop').onclick = stopAll;
 </script>
 </body>
 </html>
