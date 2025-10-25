@@ -23,6 +23,7 @@
         }
         .header {
             margin-bottom: 40px;
+            text-align: center;
         }
         h1 {
             font-size: 2.5rem;
@@ -34,6 +35,23 @@
             color: #888;
             font-size: 1.1rem;
             font-weight: 300;
+        }
+        .platform-logos {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .platform-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .platform-logo:hover {
+            opacity: 1;
         }
         .section {
             background: #1f1f1f;
@@ -216,6 +234,19 @@
             padding: 16px;
             border-radius: 6px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-logo {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            opacity: 0.5;
+        }
+        .status-item.active .status-logo {
+            opacity: 1;
         }
         .status-label {
             font-size: 0.8rem;
@@ -253,18 +284,26 @@
     <div class="header">
         <h1>🎙️ Stream Chat Reader</h1>
         <p class="subtitle">Lee tus chats de YouTube, TikTok y Twitch en voz alta mientras juegas</p>
+        <div class="platform-logos">
+            <img src="https://cdn.cdnlogo.com/logos/y/78/youtube-icon.svg" alt="YouTube" class="platform-logo">
+            <img src="https://cdn.cdnlogo.com/logos/t/59/tiktok-icon.svg" alt="TikTok" class="platform-logo">
+            <img src="https://cdn.cdnlogo.com/logos/t/92/twitch.svg" alt="Twitch" class="platform-logo">
+        </div>
     </div>
 
     <div class="status-bar">
-        <div class="status-item">
+        <div class="status-item" id="statusItemYoutube">
+            <img src="https://cdn.cdnlogo.com/logos/y/78/youtube-icon.svg" alt="YouTube" class="status-logo">
             <div class="status-label">YouTube</div>
             <div class="status-value status-inactive" id="statusYoutube">●</div>
         </div>
-        <div class="status-item">
+        <div class="status-item" id="statusItemTiktok">
+            <img src="https://cdn.cdnlogo.com/logos/t/59/tiktok-icon.svg" alt="TikTok" class="status-logo">
             <div class="status-label">TikTok</div>
             <div class="status-value status-inactive" id="statusTiktok">●</div>
         </div>
-        <div class="status-item">
+        <div class="status-item" id="statusItemTwitch">
+            <img src="https://cdn.cdnlogo.com/logos/t/92/twitch.svg" alt="Twitch" class="status-logo">
             <div class="status-label">Twitch</div>
             <div class="status-value status-inactive" id="statusTwitch">●</div>
         </div>
@@ -301,9 +340,9 @@
             <div class="info-box">
                 📌 <strong>Twitch OAuth Token:</strong> Genera tu token en 
                 <a href="https://twitchtokengenerator.com/" target="_blank">twitchtokengenerator.com</a>
-                <br>Selecciona "Bot Chat Token" y copia el "Access Token"
+                <br>Selecciona "Bot Chat Token" y copia solo el "Access Token" (sin oauth:)
             </div>
-            <input id="twitchToken" type="password" placeholder="oauth:tu_token_aqui" style="margin-top: 8px;">
+            <input id="twitchToken" type="password" placeholder="8b87gzrj0ph69b6zwvrtcvtphaoxu4" style="margin-top: 8px;">
         </div>
 
         <div class="input-group">
@@ -397,6 +436,9 @@ let messageCount = 0;
 let tiktokSocket = null;
 let twitchSocket = null;
 let userMessageCache = new Map();
+let currentYouTubeChatId = null;
+let currentTikTokUser = null;
+let currentTwitchChannel = null;
 
 // --- CARGAR VOCES ---
 function loadVoices() {
@@ -526,6 +568,13 @@ function addChatMessage(platform, username, message) {
 
 // --- YOUTUBE ---
 async function startYouTube() {
+    // Detener conexión anterior si existe
+    if (youtubeInterval) {
+        clearTimeout(youtubeInterval);
+        youtubeInterval = null;
+        currentYouTubeChatId = null;
+    }
+
     const apiKey = document.getElementById('youtubeKey').value.trim();
     const channelId = document.getElementById('youtubeChannelId').value.trim();
     
@@ -535,12 +584,12 @@ async function startYouTube() {
     }
     
     document.getElementById('statusYoutube').className = 'status-value status-active';
+    document.getElementById('statusItemYoutube').classList.add('active');
     addChatMessage('SISTEMA', 'YouTube', 'Conectando al chat...');
     
     try {
         let broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
         
-        // Si se proporcionó un Channel ID, filtrar por ese canal específico
         if (channelId) {
             broadcastUrl += `&channelId=${channelId}`;
         }
@@ -551,57 +600,77 @@ async function startYouTube() {
         if (!data.items || data.items.length === 0) {
             addChatMessage('SISTEMA', 'YouTube', '❌ No se encontró stream activo');
             document.getElementById('statusYoutube').className = 'status-value status-inactive';
+            document.getElementById('statusItemYoutube').classList.remove('active');
             return;
         }
         
-        // Usar el primer stream encontrado (será el único si se filtró por canal)
         const liveChatId = data.items[0].snippet.liveChatId;
-        const channelTitle = data.items[0].snippet.channelId;
+        currentYouTubeChatId = liveChatId; // Guardar ID del chat actual
         
         addChatMessage('SISTEMA', 'YouTube', `✅ Conectado al chat en vivo${channelId ? ' de tu canal' : ''}`);
         
-        let processedMessages = new Set(); // Para evitar duplicados
+        let processedMessages = new Set();
         
         async function fetchChat() {
-            const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
-            const r = await fetch(chatUrl);
-            const d = await r.json();
-            
-            if (d.items) {
-                d.items.forEach(i => {
-                    // Usar el ID del mensaje para evitar duplicados
-                    if (!processedMessages.has(i.id)) {
-                        addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage);
-                        processedMessages.add(i.id);
-                        
-                        // Limpiar mensajes viejos del Set (mantener solo últimos 100)
-                        if (processedMessages.size > 100) {
-                            const firstItem = processedMessages.values().next().value;
-                            processedMessages.delete(firstItem);
-                        }
-                    }
-                });
+            // Verificar que seguimos conectados al mismo chat
+            if (currentYouTubeChatId !== liveChatId) {
+                return; // Detener si se cambió de chat
             }
-            
-            youtubeInterval = setTimeout(fetchChat, (d.pollingIntervalMillis || 5000));
+
+            try {
+                const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
+                const r = await fetch(chatUrl);
+                const d = await r.json();
+                
+                if (d.items) {
+                    d.items.forEach(i => {
+                        if (!processedMessages.has(i.id)) {
+                            addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage);
+                            processedMessages.add(i.id);
+                            
+                            if (processedMessages.size > 100) {
+                                const firstItem = processedMessages.values().next().value;
+                                processedMessages.delete(firstItem);
+                            }
+                        }
+                    });
+                }
+                
+                // Solo continuar si seguimos en el mismo chat
+                if (currentYouTubeChatId === liveChatId) {
+                    youtubeInterval = setTimeout(fetchChat, (d.pollingIntervalMillis || 5000));
+                }
+            } catch (e) {
+                console.error('Error fetching YouTube chat:', e);
+            }
         }
         
         fetchChat();
     } catch (e) {
         addChatMessage('SISTEMA', 'ERROR', e.message);
         document.getElementById('statusYoutube').className = 'status-value status-inactive';
+        document.getElementById('statusItemYoutube').classList.remove('active');
     }
 }
 
 // --- TIKTOK ---
 async function startTikTok() {
-    const username = document.getElementById('tiktokUser').value.trim();
+    // Detener conexión anterior si existe
+    if (tiktokSocket) {
+        tiktokSocket.disconnect();
+        tiktokSocket = null;
+        currentTikTokUser = null;
+    }
+
+    const username = document.getElementById('tiktokUser').value.trim().toLowerCase();
     if (!username) {
         alert('Falta el usuario de TikTok');
         return;
     }
 
+    currentTikTokUser = username; // Guardar usuario actual
     document.getElementById('statusTiktok').className = 'status-value status-active';
+    document.getElementById('statusItemTiktok').classList.add('active');
     addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
     
     try {
@@ -621,14 +690,10 @@ async function startTikTok() {
                 body: JSON.stringify({ username })
             });
 
-            // Desconectar socket anterior si existe
-            if (tiktokSocket) {
-                tiktokSocket.disconnect();
-            }
-
             tiktokSocket = io('https://tiktok-chat-server.onrender.com', {
                 transports: ['websocket', 'polling'],
-                query: { username: username } // Enviar el username específico
+                query: { username: username },
+                forceNew: true // Forzar nueva conexión
             });
 
             tiktokSocket.on('connect', () => {
@@ -636,22 +701,21 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-message', (msg) => {
-                // Verificar que el mensaje pertenece al stream correcto
-                if (msg.streamUsername && msg.streamUsername.toLowerCase() !== username.toLowerCase()) {
-                    return; // Ignorar mensajes de otros streams
-                }
+                // Verificar que es nuestro stream
+                if (currentTikTokUser !== username) return;
+                
+                const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
+                if (msgUser && msgUser !== username) return;
+                
                 addChatMessage('TikTok', msg.username || msg.nickname || 'usuario', msg.message || msg.comment || '');
             });
 
-            tiktokSocket.on('tiktok-join', (msg) => {
-                // Comentado para no mostrar mensajes de unión
-            });
-
             tiktokSocket.on('tiktok-like', (msg) => {
-                // Verificar que el like pertenece al stream correcto
-                if (msg.streamUsername && msg.streamUsername.toLowerCase() !== username.toLowerCase()) {
-                    return;
-                }
+                // Verificar que es nuestro stream
+                if (currentTikTokUser !== username) return;
+                
+                const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
+                if (msgUser && msgUser !== username) return;
                 
                 const minLikes = parseInt(document.getElementById('minLikes').value) || 5;
                 const likesEnabled = document.getElementById('enableLikes').checked;
@@ -662,10 +726,11 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-gift', (msg) => {
-                // Verificar que el regalo pertenece al stream correcto
-                if (msg.streamUsername && msg.streamUsername.toLowerCase() !== username.toLowerCase()) {
-                    return;
-                }
+                // Verificar que es nuestro stream
+                if (currentTikTokUser !== username) return;
+                
+                const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
+                if (msgUser && msgUser !== username) return;
                 
                 const giftsEnabled = document.getElementById('enableGifts').checked;
                 
@@ -675,23 +740,42 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('disconnect', () => {
-                addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado del servidor');
-                document.getElementById('statusTiktok').className = 'status-value status-inactive';
+                if (currentTikTokUser === username) {
+                    addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado del servidor');
+                    document.getElementById('statusTiktok').className = 'status-value status-inactive';
+                    document.getElementById('statusItemTiktok').classList.remove('active');
+                }
             });
+
+            tiktokSocket.on('error', (err) => {
+                console.error('TikTok socket error:', err);
+            });
+
         } else {
             addChatMessage('SISTEMA', 'TikTok', '❌ No está en vivo');
             document.getElementById('statusTiktok').className = 'status-value status-inactive';
+            document.getElementById('statusItemTiktok').classList.remove('active');
+            currentTikTokUser = null;
         }
     } catch (err) {
         addChatMessage('SISTEMA', 'ERROR', err.message);
         document.getElementById('statusTiktok').className = 'status-value status-inactive';
+        document.getElementById('statusItemTiktok').classList.remove('active');
+        currentTikTokUser = null;
     }
 }
 
 // --- TWITCH ---
 async function startTwitch() {
+    // Detener conexión anterior si existe
+    if (twitchSocket) {
+        twitchSocket.close();
+        twitchSocket = null;
+        currentTwitchChannel = null;
+    }
+
     const channel = document.getElementById('twitchChannel').value.trim().toLowerCase();
-    const token = document.getElementById('twitchToken').value.trim();
+    let token = document.getElementById('twitchToken').value.trim();
     
     if (!channel) {
         alert('Falta el nombre del canal de Twitch');
@@ -703,39 +787,53 @@ async function startTwitch() {
         return;
     }
 
+    // Agregar 'oauth:' automáticamente si no lo tiene
+    if (!token.startsWith('oauth:')) {
+        token = 'oauth:' + token;
+    }
+
+    currentTwitchChannel = channel; // Guardar canal actual
     document.getElementById('statusTwitch').className = 'status-value status-active';
+    document.getElementById('statusItemTwitch').classList.add('active');
     addChatMessage('SISTEMA', 'Twitch', 'Conectando al chat...');
     
     try {
         twitchSocket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
         
         twitchSocket.onopen = () => {
-            // Autenticación
+            // Verificar que seguimos en el mismo canal
+            if (currentTwitchChannel !== channel) {
+                twitchSocket.close();
+                return;
+            }
+
             twitchSocket.send(`PASS ${token}`);
             twitchSocket.send(`NICK justinfan12345`);
             twitchSocket.send(`JOIN #${channel}`);
-            addChatMessage('SISTEMA', 'Twitch', '✅ Conectado al chat en vivo');
+            addChatMessage('SISTEMA', 'Twitch', `✅ Conectado al chat de #${channel}`);
         };
 
         twitchSocket.onmessage = (event) => {
+            // Verificar que seguimos en el mismo canal
+            if (currentTwitchChannel !== channel) return;
+
             const message = event.data;
             
-            // Responder a PING para mantener conexión
             if (message.startsWith('PING')) {
                 twitchSocket.send('PONG :tmi.twitch.tv');
                 return;
             }
             
-            // Parsear mensajes PRIVMSG (mensajes del chat)
             if (message.includes('PRIVMSG')) {
+                // Verificar que el mensaje es del canal correcto
+                if (!message.includes(`#${channel} :`)) return;
+
                 const parts = message.split('PRIVMSG');
                 if (parts.length < 2) return;
                 
-                // Extraer username
                 const userMatch = message.match(/:(.+)!/);
                 const username = userMatch ? userMatch[1] : 'usuario';
                 
-                // Extraer mensaje
                 const msgMatch = parts[1].match(/:(.*)/);
                 const msg = msgMatch ? msgMatch[1].trim() : '';
                 
@@ -746,41 +844,69 @@ async function startTwitch() {
         };
 
         twitchSocket.onerror = (error) => {
-            addChatMessage('SISTEMA', 'Twitch', '❌ Error de conexión');
-            document.getElementById('statusTwitch').className = 'status-value status-inactive';
+            if (currentTwitchChannel === channel) {
+                addChatMessage('SISTEMA', 'Twitch', '❌ Error de conexión');
+                document.getElementById('statusTwitch').className = 'status-value status-inactive';
+                document.getElementById('statusItemTwitch').classList.remove('active');
+            }
         };
 
         twitchSocket.onclose = () => {
-            addChatMessage('SISTEMA', 'Twitch', '🔴 Desconectado del chat');
-            document.getElementById('statusTwitch').className = 'status-value status-inactive';
+            if (currentTwitchChannel === channel) {
+                addChatMessage('SISTEMA', 'Twitch', '🔴 Desconectado del chat');
+                document.getElementById('statusTwitch').className = 'status-value status-inactive';
+                document.getElementById('statusItemTwitch').classList.remove('active');
+            }
         };
 
     } catch (err) {
         addChatMessage('SISTEMA', 'ERROR', err.message);
         document.getElementById('statusTwitch').className = 'status-value status-inactive';
+        document.getElementById('statusItemTwitch').classList.remove('active');
+        currentTwitchChannel = null;
     }
 }
 
 // --- DETENER ---
 function stopAll() {
-    if (youtubeInterval) clearTimeout(youtubeInterval);
-    if (tiktokSocket) tiktokSocket.disconnect();
-    if (twitchSocket) twitchSocket.close();
-    
-    youtubeInterval = null;
-    tiktokSocket = null;
-    twitchSocket = null;
+    // Limpiar YouTube
+    if (youtubeInterval) {
+        clearTimeout(youtubeInterval);
+        youtubeInterval = null;
+    }
+    currentYouTubeChatId = null;
+
+    // Limpiar TikTok
+    if (tiktokSocket) {
+        tiktokSocket.disconnect();
+        tiktokSocket = null;
+    }
+    currentTikTokUser = null;
+
+    // Limpiar Twitch
+    if (twitchSocket) {
+        twitchSocket.close();
+        twitchSocket = null;
+    }
+    currentTwitchChannel = null;
+
+    // Limpiar voz y mensajes
     speechSynthesis.cancel();
     messageQueue = [];
+    userMessageCache.clear();
     
+    // Resetear UI
     document.getElementById('statusYoutube').className = 'status-value status-inactive';
     document.getElementById('statusTiktok').className = 'status-value status-inactive';
     document.getElementById('statusTwitch').className = 'status-value status-inactive';
+    document.getElementById('statusItemYoutube').classList.remove('active');
+    document.getElementById('statusItemTiktok').classList.remove('active');
+    document.getElementById('statusItemTwitch').classList.remove('active');
     document.getElementById('chatContainer').innerHTML = '';
     messageCount = 0;
     document.getElementById('messageCount').textContent = '0';
     
-    addChatMessage('SISTEMA', 'SISTEMA', '⏹️ Lectura detenida');
+    addChatMessage('SISTEMA', 'SISTEMA', '⏹️ Todas las conexiones detenidas y limpiadas');
 }
 
 // --- EVENTOS BOTONES ---
