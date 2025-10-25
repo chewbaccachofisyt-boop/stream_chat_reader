@@ -281,6 +281,14 @@
             <label>YouTube API Key:</label>
             <input id="youtubeKey" type="password" placeholder="Ingresa tu API Key de YouTube">
         </div>
+
+        <div class="input-group">
+            <label>YouTube Channel ID (opcional):</label>
+            <input id="youtubeChannelId" placeholder="ID de tu canal para filtrar solo tus streams">
+            <span style="color: #888; font-size: 0.85rem; margin-top: 8px; display: block;">
+                Deja vacío para usar el primer stream activo encontrado
+            </span>
+        </div>
         
         <div class="input-group">
             <label>TikTok Username:</label>
@@ -519,6 +527,8 @@ function addChatMessage(platform, username, message) {
 // --- YOUTUBE ---
 async function startYouTube() {
     const apiKey = document.getElementById('youtubeKey').value.trim();
+    const channelId = document.getElementById('youtubeChannelId').value.trim();
+    
     if (!apiKey) {
         alert('Falta la API Key de YouTube');
         return;
@@ -528,20 +538,29 @@ async function startYouTube() {
     addChatMessage('SISTEMA', 'YouTube', 'Conectando al chat...');
     
     try {
-        const broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
+        let broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
+        
+        // Si se proporcionó un Channel ID, filtrar por ese canal específico
+        if (channelId) {
+            broadcastUrl += `&channelId=${channelId}`;
+        }
+        
         const res = await fetch(broadcastUrl);
         const data = await res.json();
         
         if (!data.items || data.items.length === 0) {
-            addChatMessage('SISTEMA', 'YouTube', '❌ No estás en vivo');
+            addChatMessage('SISTEMA', 'YouTube', '❌ No se encontró stream activo');
             document.getElementById('statusYoutube').className = 'status-value status-inactive';
             return;
         }
         
+        // Usar el primer stream encontrado (será el único si se filtró por canal)
         const liveChatId = data.items[0].snippet.liveChatId;
-        addChatMessage('SISTEMA', 'YouTube', '✅ Conectado al chat en vivo');
+        const channelTitle = data.items[0].snippet.channelId;
         
-        let lastMessageId = null;
+        addChatMessage('SISTEMA', 'YouTube', `✅ Conectado al chat en vivo${channelId ? ' de tu canal' : ''}`);
+        
+        let processedMessages = new Set(); // Para evitar duplicados
         
         async function fetchChat() {
             const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
@@ -550,9 +569,16 @@ async function startYouTube() {
             
             if (d.items) {
                 d.items.forEach(i => {
-                    if (i.id !== lastMessageId) {
+                    // Usar el ID del mensaje para evitar duplicados
+                    if (!processedMessages.has(i.id)) {
                         addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage);
-                        lastMessageId = i.id;
+                        processedMessages.add(i.id);
+                        
+                        // Limpiar mensajes viejos del Set (mantener solo últimos 100)
+                        if (processedMessages.size > 100) {
+                            const firstItem = processedMessages.values().next().value;
+                            processedMessages.delete(firstItem);
+                        }
                     }
                 });
             }
@@ -595,15 +621,25 @@ async function startTikTok() {
                 body: JSON.stringify({ username })
             });
 
+            // Desconectar socket anterior si existe
+            if (tiktokSocket) {
+                tiktokSocket.disconnect();
+            }
+
             tiktokSocket = io('https://tiktok-chat-server.onrender.com', {
-                transports: ['websocket', 'polling']
+                transports: ['websocket', 'polling'],
+                query: { username: username } // Enviar el username específico
             });
 
             tiktokSocket.on('connect', () => {
-                addChatMessage('SISTEMA', 'TikTok', '🟢 Conectado al servidor WebSocket');
+                addChatMessage('SISTEMA', 'TikTok', `🟢 Conectado al chat de @${username}`);
             });
 
             tiktokSocket.on('tiktok-message', (msg) => {
+                // Verificar que el mensaje pertenece al stream correcto
+                if (msg.streamUsername && msg.streamUsername.toLowerCase() !== username.toLowerCase()) {
+                    return; // Ignorar mensajes de otros streams
+                }
                 addChatMessage('TikTok', msg.username || msg.nickname || 'usuario', msg.message || msg.comment || '');
             });
 
@@ -612,6 +648,11 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-like', (msg) => {
+                // Verificar que el like pertenece al stream correcto
+                if (msg.streamUsername && msg.streamUsername.toLowerCase() !== username.toLowerCase()) {
+                    return;
+                }
+                
                 const minLikes = parseInt(document.getElementById('minLikes').value) || 5;
                 const likesEnabled = document.getElementById('enableLikes').checked;
                 
@@ -621,6 +662,11 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-gift', (msg) => {
+                // Verificar que el regalo pertenece al stream correcto
+                if (msg.streamUsername && msg.streamUsername.toLowerCase() !== username.toLowerCase()) {
+                    return;
+                }
+                
                 const giftsEnabled = document.getElementById('enableGifts').checked;
                 
                 if (giftsEnabled) {
