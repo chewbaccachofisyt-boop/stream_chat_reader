@@ -335,6 +335,55 @@
             gap: 16px;
             margin-bottom: 20px;
         }
+        .followers-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .followers-item {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+            transition: transform 0.3s;
+        }
+        .followers-item:hover {
+            transform: translateY(-2px);
+        }
+        body.light-mode .followers-item {
+            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+        }
+        .followers-item.youtube {
+            background: linear-gradient(135deg, #cc0000 0%, #ff0000 100%);
+        }
+        .followers-item.tiktok {
+            background: linear-gradient(135deg, #000 0%, #00f2ea 100%);
+        }
+        .followers-item.twitch {
+            background: linear-gradient(135deg, #772ce8 0%, #9146ff 100%);
+        }
+        .followers-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .followers-count {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .followers-platform {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         .status-item {
             background: #2a2a2a;
             padding: 16px;
@@ -413,6 +462,33 @@
             <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" alt="YouTube" class="platform-logo">
             <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok" class="platform-logo">
             <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Twitch_logo.svg" alt="Twitch" class="platform-logo">
+        </div>
+    </div>
+
+    <div class="followers-bar">
+        <div class="followers-item youtube">
+            <div class="followers-label">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" alt="YouTube" style="width: 20px; height: 20px;">
+                Suscriptores
+            </div>
+            <div class="followers-count" id="youtubeFollowers">---</div>
+            <div class="followers-platform">YouTube</div>
+        </div>
+        <div class="followers-item tiktok">
+            <div class="followers-label">
+                <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok" style="width: 20px; height: 20px;">
+                Seguidores
+            </div>
+            <div class="followers-count" id="tiktokFollowers">---</div>
+            <div class="followers-platform">TikTok</div>
+        </div>
+        <div class="followers-item twitch">
+            <div class="followers-label">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Twitch_logo.svg" alt="Twitch" style="width: 20px; height: 20px;">
+                Seguidores
+            </div>
+            <div class="followers-count" id="twitchFollowers">---</div>
+            <div class="followers-platform">Twitch</div>
         </div>
     </div>
 
@@ -565,6 +641,70 @@ let currentYouTubeChatId = null;
 let currentTikTokUser = null;
 let currentTwitchChannel = null;
 let keepAliveInterval = null;
+
+// --- FORMATEAR NÚMEROS ---
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+}
+
+// --- OBTENER SEGUIDORES ---
+async function updateFollowerCounts() {
+    // YouTube
+    const youtubeKey = document.getElementById('youtubeKey').value.trim();
+    const youtubeChannelId = document.getElementById('youtubeChannelId').value.trim();
+    
+    if (youtubeKey && youtubeChannelId) {
+        try {
+            const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${youtubeChannelId}&key=${youtubeKey}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.items && data.items[0]) {
+                const count = parseInt(data.items[0].statistics.subscriberCount);
+                document.getElementById('youtubeFollowers').textContent = formatNumber(count);
+            }
+        } catch (e) {
+            console.error('Error getting YouTube followers:', e);
+        }
+    }
+
+    // TikTok (usando API del servidor)
+    const tiktokUser = document.getElementById('tiktokUser').value.trim();
+    if (tiktokUser) {
+        try {
+            const res = await fetch('https://tiktok-chat-server.onrender.com/api/check-live', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: tiktokUser })
+            });
+            const data = await res.json();
+            if (data.followers) {
+                document.getElementById('tiktokFollowers').textContent = formatNumber(data.followers);
+            }
+        } catch (e) {
+            console.error('Error getting TikTok followers:', e);
+        }
+    }
+
+    // Twitch
+    const twitchChannel = document.getElementById('twitchChannel').value.trim();
+    if (twitchChannel) {
+        try {
+            const url = `https://decapi.me/twitch/followcount/${twitchChannel}`;
+            const res = await fetch(url);
+            const count = await res.text();
+            if (count && !isNaN(count)) {
+                document.getElementById('twitchFollowers').textContent = formatNumber(parseInt(count));
+            }
+        } catch (e) {
+            console.error('Error getting Twitch followers:', e);
+        }
+    }
+}
 
 // --- MANTENER ACTIVO EN SEGUNDO PLANO ---
 function startKeepAlive() {
@@ -790,6 +930,9 @@ async function startYouTube() {
     document.getElementById('statusItemYoutube').classList.add('active');
     addChatMessage('SISTEMA', 'YouTube', 'Conectando al chat...');
     
+    // Actualizar contador de seguidores
+    updateFollowerCounts();
+    
     try {
         let broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
         
@@ -888,6 +1031,9 @@ async function startTikTok() {
     document.getElementById('statusTiktok').className = 'status-value status-active';
     document.getElementById('statusItemTiktok').classList.add('active');
     addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
+    
+    // Actualizar contador de seguidores
+    updateFollowerCounts();
     
     try {
         const res = await fetch('https://tiktok-chat-server.onrender.com/api/check-live', {
@@ -1013,6 +1159,9 @@ async function startTwitch() {
     document.getElementById('statusTwitch').className = 'status-value status-active';
     document.getElementById('statusItemTwitch').classList.add('active');
     addChatMessage('SISTEMA', 'Twitch', 'Conectando al chat...');
+    
+    // Actualizar contador de seguidores
+    updateFollowerCounts();
     
     try {
         twitchSocket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
