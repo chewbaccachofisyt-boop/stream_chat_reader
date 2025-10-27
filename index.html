@@ -84,7 +84,7 @@
             border-radius: 50%;
         }
         input:checked + .slider {
-            background-color: #e50914;
+            background-color: #2563eb;
         }
         input:checked + .slider:before {
             transform: translateX(24px);
@@ -166,13 +166,13 @@
         }
         input:focus, select:focus {
             outline: none;
-            border-color: #e50914;
+            border-color: #2563eb;
             background: #2a2a2a;
         }
         body.light-mode input:focus,
         body.light-mode select:focus {
             background: #fff;
-            border-color: #e50914;
+            border-color: #2563eb;
         }
         .voice-selector {
             display: grid;
@@ -201,12 +201,12 @@
             background: #e0e0e0;
         }
         .voice-option.active {
-            border-color: #e50914;
-            background: #2a1a1a;
+            border-color: #2563eb;
+            background: #1e3a8a;
         }
         body.light-mode .voice-option.active {
-            background: #ffe0e0;
-            border-color: #e50914;
+            background: #dbeafe;
+            border-color: #2563eb;
         }
         .voice-name {
             font-weight: 600;
@@ -253,15 +253,15 @@
         }
         .btn-twitch:hover { background: #772ce8; }
         .btn-all {
-            background: #10b981;
+            background: #2563eb;
             color: white;
         }
-        .btn-all:hover { background: #059669; }
+        .btn-all:hover { background: #1d4ed8; }
         .btn-stop {
             background: #555;
             color: white;
         }
-        .btn-stop:hover { background: #e50914; }
+        .btn-stop:hover { background: #ef4444; }
         .chat-container {
             background: #0a0a0a;
             border-radius: 8px;
@@ -314,7 +314,7 @@
         .chat-youtube { border-left-color: #ff0000; }
         .chat-tiktok { border-left-color: #00f2ea; }
         .chat-twitch { border-left-color: #9146ff; }
-        .chat-sistema { border-left-color: #10b981; }
+        .chat-sistema { border-left-color: #2563eb; }
         .chat-username {
             font-weight: 600;
             margin-right: 8px;
@@ -368,7 +368,7 @@
             font-size: 1.2rem;
             font-weight: 600;
         }
-        .status-active { color: #10b981; }
+        .status-active { color: #2563eb; }
         .status-inactive { color: #888; }
         .info-box {
             background: #2a2a2a;
@@ -564,6 +564,39 @@ let userMessageCache = new Map();
 let currentYouTubeChatId = null;
 let currentTikTokUser = null;
 let currentTwitchChannel = null;
+let keepAliveInterval = null;
+
+// --- MANTENER ACTIVO EN SEGUNDO PLANO ---
+function startKeepAlive() {
+    // Evitar que el navegador pause la página
+    if (keepAliveInterval) clearInterval(keepAliveInterval);
+    
+    keepAliveInterval = setInterval(() => {
+        // Pequeña actividad para mantener la página activa
+        document.title = `🎙️ Chat Reader (${messageCount} msgs)`;
+    }, 5000);
+}
+
+function stopKeepAlive() {
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+    }
+    document.title = 'Stream Chat Reader';
+}
+
+// Detectar cuando la pestaña se vuelve visible/invisible
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('Pestaña oculta - manteniendo conexiones activas');
+    } else {
+        console.log('Pestaña visible');
+        // Reintentar lectura de mensajes en cola
+        if (!isSpeaking && messageQueue.length > 0) {
+            processQueue();
+        }
+    }
+});
 
 // --- MODO OSCURO/CLARO ---
 document.getElementById('themeToggle').addEventListener('change', function() {
@@ -627,14 +660,45 @@ document.getElementById('voiceVolume').oninput = (e) => {
 
 // --- VOZ ---
 function speak(text) {
+    // Verificar que speechSynthesis esté disponible
+    if (!window.speechSynthesis) {
+        console.error('Speech Synthesis no disponible');
+        return;
+    }
+
+    // Cancelar si hay un mensaje hablando (para reiniciar)
+    if (isSpeaking) {
+        speechSynthesis.cancel();
+    }
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = selectedVoice;
     utterance.rate = parseFloat(document.getElementById('voiceRate').value);
     utterance.pitch = 1;
     utterance.volume = parseFloat(document.getElementById('voiceVolume').value);
+    
     isSpeaking = true;
-    utterance.onend = () => { isSpeaking = false; processQueue(); };
+    
+    utterance.onend = () => { 
+        isSpeaking = false; 
+        processQueue(); 
+    };
+    
+    utterance.onerror = (error) => {
+        console.error('Error en speech:', error);
+        isSpeaking = false;
+        processQueue();
+    };
+    
+    // Iniciar speech
     speechSynthesis.speak(utterance);
+    
+    // Mantener activo el speech synthesis
+    setTimeout(() => {
+        if (speechSynthesis.paused) {
+            speechSynthesis.resume();
+        }
+    }, 100);
 }
 
 function addToQueue(text) {
@@ -643,7 +707,9 @@ function addToQueue(text) {
 }
 
 function processQueue() {
-    if (messageQueue.length > 0 && !isSpeaking) speak(messageQueue.shift());
+    if (messageQueue.length > 0 && !isSpeaking) {
+        speak(messageQueue.shift());
+    }
 }
 
 // --- CHAT VISUAL ---
@@ -719,6 +785,7 @@ async function startYouTube() {
         return;
     }
     
+    startKeepAlive(); // Mantener página activa
     document.getElementById('statusYoutube').className = 'status-value status-active';
     document.getElementById('statusItemYoutube').classList.add('active');
     addChatMessage('SISTEMA', 'YouTube', 'Conectando al chat...');
@@ -741,16 +808,16 @@ async function startYouTube() {
         }
         
         const liveChatId = data.items[0].snippet.liveChatId;
-        currentYouTubeChatId = liveChatId; // Guardar ID del chat actual
+        currentYouTubeChatId = liveChatId;
         
         addChatMessage('SISTEMA', 'YouTube', `✅ Conectado al chat en vivo${channelId ? ' de tu canal' : ''}`);
         
         let processedMessages = new Set();
+        let failCount = 0; // Contador de fallos
         
         async function fetchChat() {
-            // Verificar que seguimos conectados al mismo chat
             if (currentYouTubeChatId !== liveChatId) {
-                return; // Detener si se cambió de chat
+                return;
             }
 
             try {
@@ -759,6 +826,7 @@ async function startYouTube() {
                 const d = await r.json();
                 
                 if (d.items) {
+                    failCount = 0; // Resetear contador de fallos
                     d.items.forEach(i => {
                         if (!processedMessages.has(i.id)) {
                             addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage);
@@ -772,12 +840,23 @@ async function startYouTube() {
                     });
                 }
                 
-                // Solo continuar si seguimos en el mismo chat
                 if (currentYouTubeChatId === liveChatId) {
-                    youtubeInterval = setTimeout(fetchChat, (d.pollingIntervalMillis || 5000));
+                    const pollInterval = d.pollingIntervalMillis || 5000;
+                    youtubeInterval = setTimeout(fetchChat, pollInterval);
                 }
             } catch (e) {
                 console.error('Error fetching YouTube chat:', e);
+                failCount++;
+                
+                // Si falla 3 veces seguidas, notificar
+                if (failCount >= 3) {
+                    addChatMessage('SISTEMA', 'YouTube', '⚠️ Problemas de conexión, reintentando...');
+                }
+                
+                // Reintentar después de 10 segundos
+                if (currentYouTubeChatId === liveChatId) {
+                    youtubeInterval = setTimeout(fetchChat, 10000);
+                }
             }
         }
         
@@ -805,6 +884,7 @@ async function startTikTok() {
     }
 
     currentTikTokUser = username; // Guardar usuario actual
+    startKeepAlive(); // Mantener página activa
     document.getElementById('statusTiktok').className = 'status-value status-active';
     document.getElementById('statusItemTiktok').classList.add('active');
     addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
@@ -929,6 +1009,7 @@ async function startTwitch() {
     }
 
     currentTwitchChannel = channel; // Guardar canal actual
+    startKeepAlive(); // Mantener página activa
     document.getElementById('statusTwitch').className = 'status-value status-active';
     document.getElementById('statusItemTwitch').classList.add('active');
     addChatMessage('SISTEMA', 'Twitch', 'Conectando al chat...');
@@ -1005,6 +1086,9 @@ async function startTwitch() {
 
 // --- DETENER ---
 function stopAll() {
+    // Detener keep alive
+    stopKeepAlive();
+
     // Limpiar YouTube
     if (youtubeInterval) {
         clearTimeout(youtubeInterval);
@@ -1030,6 +1114,7 @@ function stopAll() {
     speechSynthesis.cancel();
     messageQueue = [];
     userMessageCache.clear();
+    isSpeaking = false;
     
     // Resetear UI
     document.getElementById('statusYoutube').className = 'status-value status-inactive';
