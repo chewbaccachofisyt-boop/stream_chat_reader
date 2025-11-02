@@ -641,6 +641,12 @@ let currentYouTubeChatId = null;
 let currentTikTokUser = null;
 let currentTwitchChannel = null;
 let keepAliveInterval = null;
+let tiktokReconnectAttempts = 0;
+let tiktokReconnectInterval = null;
+let tiktokPingInterval = null;
+let youtubeReconnectAttempts = 0;
+let twitchReconnectAttempts = 0;
+let twitchPingInterval = null;
 
 // --- FORMATEAR NÚMEROS ---
 function formatNumber(num) {
@@ -1017,7 +1023,17 @@ async function startTikTok() {
     if (tiktokSocket) {
         tiktokSocket.disconnect();
         tiktokSocket = null;
-        currentTikTokUser = null;
+    }
+    
+    // Limpiar intervalos de reconexión
+    if (tiktokReconnectInterval) {
+        clearInterval(tiktokReconnectInterval);
+        tiktokReconnectInterval = null;
+    }
+    
+    if (tiktokPingInterval) {
+        clearInterval(tiktokPingInterval);
+        tiktokPingInterval = null;
     }
 
     const username = document.getElementById('tiktokUser').value.trim().toLowerCase();
@@ -1026,13 +1042,24 @@ async function startTikTok() {
         return;
     }
 
-    currentTikTokUser = username; // Guardar usuario actual
-    startKeepAlive(); // Mantener página activa
+    currentTikTokUser = username;
+    tiktokReconnectAttempts = 0;
+    await connectTikTok(username);
+}
+
+async function connectTikTok(username) {
+    if (currentTikTokUser !== username) return; // Verificar que seguimos queriendo conectar este usuario
+
+    startKeepAlive();
     document.getElementById('statusTiktok').className = 'status-value status-active';
     document.getElementById('statusItemTiktok').classList.add('active');
-    addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
     
-    // Actualizar contador de seguidores
+    if (tiktokReconnectAttempts === 0) {
+        addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
+    } else {
+        addChatMessage('SISTEMA', 'TikTok', `Reintentando conexión (${tiktokReconnectAttempts}/10)...`);
+    }
+    
     updateFollowerCounts();
     
     try {
@@ -1044,7 +1071,13 @@ async function startTikTok() {
         const data = await res.json();
 
         if (data.isLive) {
-            addChatMessage('SISTEMA', 'TikTok', '✅ Usuario está en vivo, iniciando conexión...');
+            tiktokReconnectAttempts = 0; // Resetear intentos si está en vivo
+            
+            if (!tiktokSocket) {
+                addChatMessage('SISTEMA', 'TikTok', '✅ Usuario está en vivo, iniciando conexión...');
+            } else {
+                addChatMessage('SISTEMA', 'TikTok', '✅ Reconectado exitosamente');
+            }
             
             await fetch('https://tiktok-chat-server.onrender.com/api/start-chat', {
                 method: 'POST',
@@ -1055,15 +1088,40 @@ async function startTikTok() {
             tiktokSocket = io('https://tiktok-chat-server.onrender.com', {
                 transports: ['websocket', 'polling'],
                 query: { username: username },
-                forceNew: true // Forzar nueva conexión
+                forceNew: true,
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                reconnectionAttempts: Infinity,
+                timeout: 20000
             });
 
             tiktokSocket.on('connect', () => {
                 addChatMessage('SISTEMA', 'TikTok', `🟢 Conectado al chat de @${username}`);
+                tiktokReconnectAttempts = 0;
+                
+                // Ping periódico para mantener la conexión
+                if (tiktokPingInterval) clearInterval(tiktokPingInterval);
+                tiktokPingInterval = setInterval(() => {
+                    if (tiktokSocket && tiktokSocket.connected) {
+                        tiktokSocket.emit('ping');
+                    }
+                }, 25000); // Cada 25 segundos
+            });
+
+            tiktokSocket.on('connect_error', (error) => {
+                console.error('TikTok connection error:', error);
+            });
+
+            tiktokSocket.on('reconnect_attempt', () => {
+                console.log('TikTok intentando reconectar...');
+            });
+
+            tiktokSocket.on('reconnect', () => {
+                addChatMessage('SISTEMA', 'TikTok', '🟢 Reconectado automáticamente');
             });
 
             tiktokSocket.on('tiktok-message', (msg) => {
-                // Verificar que es nuestro stream
                 if (currentTikTokUser !== username) return;
                 
                 const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
@@ -1073,7 +1131,6 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-like', (msg) => {
-                // Verificar que es nuestro stream
                 if (currentTikTokUser !== username) return;
                 
                 const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
@@ -1088,7 +1145,6 @@ async function startTikTok() {
             });
 
             tiktokSocket.on('tiktok-gift', (msg) => {
-                // Verificar que es nuestro stream
                 if (currentTikTokUser !== username) return;
                 
                 const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
@@ -1101,11 +1157,24 @@ async function startTikTok() {
                 }
             });
 
-            tiktokSocket.on('disconnect', () => {
-                if (currentTikTokUser === username) {
-                    addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado del servidor');
-                    document.getElementById('statusTiktok').className = 'status-value status-inactive';
-                    document.getElementById('statusItemTiktok').classList.remove('active');
+            tiktokSocket.on('disconnect', (reason) => {
+                console.log('TikTok desconectado:', reason);
+                
+                if (tiktokPingInterval) {
+                    clearInterval(tiktokPingInterval);
+                    tiktokPingInterval = null;
+                }
+                
+                if (currentTikTokUser === username && reason !== 'io client disconnect') {
+                    addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado - intentando reconectar...');
+                    
+                    // Intentar reconexión manual después de 5 segundos
+                    setTimeout(() => {
+                        if (currentTikTokUser === username && tiktokReconnectAttempts < 10) {
+                            tiktokReconnectAttempts++;
+                            connectTikTok(username);
+                        }
+                    }, 5000);
                 }
             });
 
@@ -1113,17 +1182,47 @@ async function startTikTok() {
                 console.error('TikTok socket error:', err);
             });
 
+            // Verificar conexión cada 30 segundos
+            if (tiktokReconnectInterval) clearInterval(tiktokReconnectInterval);
+            tiktokReconnectInterval = setInterval(() => {
+                if (currentTikTokUser === username && (!tiktokSocket || !tiktokSocket.connected)) {
+                    console.log('TikTok no está conectado, reintentando...');
+                    if (tiktokReconnectAttempts < 10) {
+                        tiktokReconnectAttempts++;
+                        connectTikTok(username);
+                    }
+                }
+            }, 30000);
+
         } else {
             addChatMessage('SISTEMA', 'TikTok', '❌ No está en vivo');
             document.getElementById('statusTiktok').className = 'status-value status-inactive';
             document.getElementById('statusItemTiktok').classList.remove('active');
             currentTikTokUser = null;
+            
+            // Verificar de nuevo en 30 segundos si sigue en el mismo usuario
+            setTimeout(() => {
+                if (document.getElementById('tiktokUser').value.trim().toLowerCase() === username) {
+                    addChatMessage('SISTEMA', 'TikTok', '🔄 Verificando si ya está en vivo...');
+                    startTikTok();
+                }
+            }, 30000);
         }
     } catch (err) {
+        console.error('Error en TikTok:', err);
         addChatMessage('SISTEMA', 'ERROR', err.message);
         document.getElementById('statusTiktok').className = 'status-value status-inactive';
         document.getElementById('statusItemTiktok').classList.remove('active');
-        currentTikTokUser = null;
+        
+        // Reintentar en 10 segundos si no hemos excedido los intentos
+        if (currentTikTokUser === username && tiktokReconnectAttempts < 10) {
+            setTimeout(() => {
+                tiktokReconnectAttempts++;
+                connectTikTok(username);
+            }, 10000);
+        } else {
+            currentTikTokUser = null;
+        }
     }
 }
 
@@ -1134,6 +1233,11 @@ async function startTwitch() {
         twitchSocket.close();
         twitchSocket = null;
         currentTwitchChannel = null;
+    }
+    
+    if (twitchPingInterval) {
+        clearInterval(twitchPingInterval);
+        twitchPingInterval = null;
     }
 
     const channel = document.getElementById('twitchChannel').value.trim().toLowerCase();
@@ -1149,25 +1253,35 @@ async function startTwitch() {
         return;
     }
 
-    // Agregar 'oauth:' automáticamente si no lo tiene
     if (!token.startsWith('oauth:')) {
         token = 'oauth:' + token;
     }
 
-    currentTwitchChannel = channel; // Guardar canal actual
-    startKeepAlive(); // Mantener página activa
+    twitchReconnectAttempts = 0;
+    connectTwitch(channel, token);
+}
+
+function connectTwitch(channel, token) {
+    currentTwitchChannel = channel;
+    startKeepAlive();
     document.getElementById('statusTwitch').className = 'status-value status-active';
     document.getElementById('statusItemTwitch').classList.add('active');
-    addChatMessage('SISTEMA', 'Twitch', 'Conectando al chat...');
     
-    // Actualizar contador de seguidores
+    if (twitchReconnectAttempts === 0) {
+        addChatMessage('SISTEMA', 'Twitch', 'Conectando al chat...');
+    } else {
+        addChatMessage('SISTEMA', 'Twitch', `🔄 Reintentando conexión (${twitchReconnectAttempts}/10)...`);
+    }
+    
     updateFollowerCounts();
     
     try {
         twitchSocket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
         
+        let isAuthenticated = false;
+        let lastMessageTime = Date.now();
+        
         twitchSocket.onopen = () => {
-            // Verificar que seguimos en el mismo canal
             if (currentTwitchChannel !== channel) {
                 twitchSocket.close();
                 return;
@@ -1176,22 +1290,37 @@ async function startTwitch() {
             twitchSocket.send(`PASS ${token}`);
             twitchSocket.send(`NICK justinfan12345`);
             twitchSocket.send(`JOIN #${channel}`);
-            addChatMessage('SISTEMA', 'Twitch', `✅ Conectado al chat de #${channel}`);
+            
+            // Configurar capability para recibir tags
+            twitchSocket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+            
+            twitchReconnectAttempts = 0;
+            
+            if (twitchReconnectAttempts === 0) {
+                addChatMessage('SISTEMA', 'Twitch', `✅ Conectado al chat de #${channel}`);
+            } else {
+                addChatMessage('SISTEMA', 'Twitch', '✅ Reconectado exitosamente');
+            }
         };
 
         twitchSocket.onmessage = (event) => {
-            // Verificar que seguimos en el mismo canal
             if (currentTwitchChannel !== channel) return;
 
             const message = event.data;
+            lastMessageTime = Date.now();
             
+            // Responder a PING
             if (message.startsWith('PING')) {
                 twitchSocket.send('PONG :tmi.twitch.tv');
                 return;
             }
             
+            // Verificar autenticación exitosa
+            if (message.includes('001')) {
+                isAuthenticated = true;
+            }
+            
             if (message.includes('PRIVMSG')) {
-                // Verificar que el mensaje es del canal correcto
                 if (!message.includes(`#${channel} :`)) return;
 
                 const parts = message.split('PRIVMSG');
@@ -1210,26 +1339,61 @@ async function startTwitch() {
         };
 
         twitchSocket.onerror = (error) => {
+            console.error('Twitch WebSocket error:', error);
             if (currentTwitchChannel === channel) {
                 addChatMessage('SISTEMA', 'Twitch', '❌ Error de conexión');
-                document.getElementById('statusTwitch').className = 'status-value status-inactive';
-                document.getElementById('statusItemTwitch').classList.remove('active');
             }
         };
 
         twitchSocket.onclose = () => {
+            if (twitchPingInterval) {
+                clearInterval(twitchPingInterval);
+                twitchPingInterval = null;
+            }
+            
             if (currentTwitchChannel === channel) {
-                addChatMessage('SISTEMA', 'Twitch', '🔴 Desconectado del chat');
+                addChatMessage('SISTEMA', 'Twitch', '🔴 Desconectado - reconectando en 5s...');
                 document.getElementById('statusTwitch').className = 'status-value status-inactive';
                 document.getElementById('statusItemTwitch').classList.remove('active');
+                
+                // Reintentar conexión
+                if (twitchReconnectAttempts < 10) {
+                    setTimeout(() => {
+                        twitchReconnectAttempts++;
+                        connectTwitch(channel, token);
+                    }, 5000);
+                }
             }
         };
+        
+        // Ping cada 60 segundos para mantener la conexión
+        twitchPingInterval = setInterval(() => {
+            if (twitchSocket && twitchSocket.readyState === WebSocket.OPEN) {
+                twitchSocket.send('PING :tmi.twitch.tv');
+            }
+            
+            // Verificar si hace más de 90 segundos sin mensajes
+            const timeSinceLastMessage = Date.now() - lastMessageTime;
+            if (timeSinceLastMessage > 90000 && currentTwitchChannel === channel) {
+                console.log('Twitch: Sin actividad por 90s, reconectando...');
+                twitchSocket.close();
+            }
+        }, 60000);
 
     } catch (err) {
-        addChatMessage('SISTEMA', 'ERROR', err.message);
+        addChatMessage('SISTEMA', 'ERROR', 'Twitch: ' + err.message);
         document.getElementById('statusTwitch').className = 'status-value status-inactive';
         document.getElementById('statusItemTwitch').classList.remove('active');
-        currentTwitchChannel = null;
+        
+        // Reintentar en 10 segundos
+        if (currentTwitchChannel === channel && twitchReconnectAttempts < 10) {
+            setTimeout(() => {
+                twitchReconnectAttempts++;
+                connectTwitch(channel, token);
+            }, 10000);
+        } else {
+            currentTwitchChannel = null;
+        }
     }
 }
 
@@ -1244,20 +1408,35 @@ function stopAll() {
         youtubeInterval = null;
     }
     currentYouTubeChatId = null;
+    youtubeReconnectAttempts = 0;
 
     // Limpiar TikTok
     if (tiktokSocket) {
         tiktokSocket.disconnect();
         tiktokSocket = null;
     }
+    if (tiktokReconnectInterval) {
+        clearInterval(tiktokReconnectInterval);
+        tiktokReconnectInterval = null;
+    }
+    if (tiktokPingInterval) {
+        clearInterval(tiktokPingInterval);
+        tiktokPingInterval = null;
+    }
     currentTikTokUser = null;
+    tiktokReconnectAttempts = 0;
 
     // Limpiar Twitch
     if (twitchSocket) {
         twitchSocket.close();
         twitchSocket = null;
     }
+    if (twitchPingInterval) {
+        clearInterval(twitchPingInterval);
+        twitchPingInterval = null;
+    }
     currentTwitchChannel = null;
+    twitchReconnectAttempts = 0;
 
     // Limpiar voz y mensajes
     speechSynthesis.cancel();
