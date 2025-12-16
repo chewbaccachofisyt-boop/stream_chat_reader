@@ -254,8 +254,12 @@
             border-left-color: #FF0000;
         }
 
-        .chat-tiktok {
-            border-left-color: #00f2ea;
+        .chat-twitch {
+            border-left-color: #9146FF;
+        }
+        
+        .chat-kick {
+            border-left-color: #53FC18;
         }
 
         .chat-username {
@@ -350,6 +354,14 @@
                         <label for="tiktokKey">TikTok Username (sin @)</label>
                         <input type="text" id="tiktokKey" placeholder="Ejemplo: tu_usuario">
                     </div>
+                    <div class="input-group">
+                        <label for="twitchKey">Twitch Username (sin @)</label>
+                        <input type="text" id="twitchKey" placeholder="Ejemplo: tu_canal">
+                    </div>
+                    <div class="input-group">
+                        <label for="kickKey">Kick Username (sin @)</label>
+                        <input type="text" id="kickKey" placeholder="Ejemplo: tu_canal">
+                    </div>
                 </div>
             </div>
 
@@ -407,16 +419,22 @@
                 <div class="section-title">🎮 Control de Lectura</div>
                 <div class="button-grid">
                     <button class="btn btn-youtube" id="btnYoutube">
-                        ▶️ Iniciar YouTube
+                        ▶️ YouTube
                     </button>
                     <button class="btn btn-tiktok" id="btnTiktok">
-                        ▶️ Iniciar TikTok
+                        ▶️ TikTok
+                    </button>
+                    <button class="btn btn-twitch" id="btnTwitch" style="background: #9146FF;">
+                        ▶️ Twitch
+                    </button>
+                    <button class="btn btn-kick" id="btnKick" style="background: #53FC18; color: #000;">
+                        ▶️ Kick
                     </button>
                     <button class="btn btn-both" id="btnBoth">
-                        ▶️ Iniciar Ambos
+                        ▶️ Todos
                     </button>
                     <button class="btn btn-stop" id="btnStop" disabled>
-                        ⏹️ Detener Todo
+                        ⏹️ Detener
                     </button>
                     <button class="btn btn-test" id="btnTest">
                         🔊 Probar Voz
@@ -447,25 +465,34 @@
                     <li><strong>YouTube:</strong> 
                         <ol style="margin-left: 20px; margin-top: 5px;">
                             <li>Ve a <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
-                            <li>Crea un proyecto nuevo</li>
-                            <li>Habilita "YouTube Data API v3"</li>
-                            <li>Crea credenciales (API Key)</li>
-                            <li>Copia y pega tu API Key aquí</li>
-                            <li>¡Debes estar transmitiendo EN VIVO en YouTube!</li>
+                            <li>Crea un proyecto y habilita "YouTube Data API v3"</li>
+                            <li>Crea credenciales (API Key) y pégala aquí</li>
+                            <li>¡Debes estar transmitiendo EN VIVO!</li>
                         </ol>
                     </li>
-                    <li><strong>TikTok (Con TikFinity):</strong> 
+                    <li><strong>TikTok:</strong> 
                         <ul style="margin-left: 20px; margin-top: 5px;">
-                            <li>✅ Solo necesitas tu nombre de usuario (sin @)</li>
-                            <li>✅ Funciona directamente sin backend</li>
-                            <li>✅ Conexión estable y confiable</li>
-                            <li>✅ Debes estar transmitiendo EN VIVO</li>
-                            <li>⚠️ Si tu usuario es @juan123, ingresa solo: juan123</li>
+                            <li>✅ Solo necesitas tu username (sin @)</li>
+                            <li>✅ Usa TikFinity para conexión estable</li>
+                            <li>✅ Debes estar EN VIVO</li>
                         </ul>
                     </li>
-                    <li><strong>Estado EN VIVO:</strong> La app te dirá si estás en vivo o no al conectar</li>
-                    <li><strong>Voces:</strong> El navegador usará las voces instaladas en tu sistema</li>
-                    <li><strong>Reconexión automática:</strong> Si se desconecta, intentará reconectar automáticamente</li>
+                    <li><strong>Twitch:</strong> 
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>✅ Solo necesitas tu nombre de canal (sin @)</li>
+                            <li>✅ Conexión directa vía IRC WebSocket</li>
+                            <li>✅ Funciona estés en vivo o no</li>
+                        </ul>
+                    </li>
+                    <li><strong>Kick:</strong> 
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>✅ Solo necesitas tu nombre de canal (sin @)</li>
+                            <li>✅ Conexión vía API pública y Pusher</li>
+                            <li>✅ Funciona con canales activos</li>
+                        </ul>
+                    </li>
+                    <li><strong>Botón "Todos":</strong> Conecta a todas las plataformas que tengan datos ingresados</li>
+                    <li><strong>Reconexión automática:</strong> Si se desconecta, reintenta cada 5 segundos</li>
                 </ul>
             </div>
         </div>
@@ -476,6 +503,8 @@
         let isReading = false;
         let youtubeInterval = null;
         let tiktokInterval = null;
+        let twitchWs = null;
+        let kickWs = null;
         let messageQueue = [];
         let isSpeaking = false;
         let voices = [];
@@ -484,6 +513,8 @@
         const elements = {
             youtubeKey: document.getElementById('youtubeKey'),
             tiktokKey: document.getElementById('tiktokKey'),
+            twitchKey: document.getElementById('twitchKey'),
+            kickKey: document.getElementById('kickKey'),
             voiceSelect: document.getElementById('voiceSelect'),
             volumeSlider: document.getElementById('volumeSlider'),
             speedSlider: document.getElementById('speedSlider'),
@@ -496,6 +527,8 @@
             showTimestamp: document.getElementById('showTimestamp'),
             btnYoutube: document.getElementById('btnYoutube'),
             btnTiktok: document.getElementById('btnTiktok'),
+            btnTwitch: document.getElementById('btnTwitch'),
+            btnKick: document.getElementById('btnKick'),
             btnBoth: document.getElementById('btnBoth'),
             btnStop: document.getElementById('btnStop'),
             btnTest: document.getElementById('btnTest'),
@@ -725,7 +758,166 @@
             }
         }
 
-        // Lectura REAL de TikTok usando TikFinity
+        // Lectura REAL de Twitch usando TMI.js (API de IRC)
+        async function startTwitchReading() {
+            const channel = elements.twitchKey.value.trim().toLowerCase();
+            
+            addChatMessage('SISTEMA', 'TWITCH', '🔄 Conectando con Twitch...');
+            
+            try {
+                // Usar WebSocket IRC de Twitch
+                twitchWs = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+                
+                twitchWs.onopen = () => {
+                    // Conectar de forma anónima
+                    twitchWs.send('NICK justinfan12345');
+                    twitchWs.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                    twitchWs.send(`JOIN #${channel}`);
+                };
+                
+                twitchWs.onmessage = (event) => {
+                    const message = event.data;
+                    
+                    // Responder a PING
+                    if (message.startsWith('PING')) {
+                        twitchWs.send('PONG :tmi.twitch.tv');
+                        return;
+                    }
+                    
+                    // Procesar mensajes de chat
+                    if (message.includes('PRIVMSG')) {
+                        const userMatch = message.match(/display-name=([^;]+)/);
+                        const textMatch = message.match(/PRIVMSG #\w+ :(.+)/);
+                        
+                        if (userMatch && textMatch) {
+                            const username = userMatch[1];
+                            const text = textMatch[1];
+                            addChatMessage('TWITCH', username, text);
+                        }
+                    }
+                    
+                    // Confirmación de conexión
+                    if (message.includes('JOIN')) {
+                        addChatMessage('SISTEMA', 'TWITCH', `✅ Conectado al canal: ${channel}`);
+                        elements.status.textContent = '🟢 Estado: Leyendo Twitch';
+                        elements.status.className = 'status active';
+                    }
+                };
+                
+                twitchWs.onerror = (error) => {
+                    console.error('Twitch WebSocket error:', error);
+                    addChatMessage('SISTEMA', 'ERROR', 'Error al conectar con Twitch. Verifica el nombre del canal.');
+                };
+                
+                twitchWs.onclose = () => {
+                    addChatMessage('SISTEMA', 'TWITCH', '⚠️ Desconectado de Twitch');
+                    if (isReading) {
+                        setTimeout(() => {
+                            if (isReading) {
+                                addChatMessage('SISTEMA', 'TWITCH', '🔄 Reconectando...');
+                                startTwitchReading();
+                            }
+                        }, 5000);
+                    }
+                };
+                
+            } catch (error) {
+                addChatMessage('SISTEMA', 'ERROR', `Error: ${error.message}`);
+            }
+        }
+
+        // Lectura REAL de Kick usando API pública
+        async function startKickReading() {
+            const channel = elements.kickKey.value.trim().toLowerCase();
+            
+            addChatMessage('SISTEMA', 'KICK', '🔄 Conectando con Kick...');
+            
+            try {
+                // Primero verificar si el canal existe y está en vivo
+                const channelUrl = `https://kick.com/api/v2/channels/${channel}`;
+                
+                const response = await fetch(channelUrl);
+                if (!response.ok) {
+                    throw new Error('Canal no encontrado');
+                }
+                
+                const channelData = await response.json();
+                const chatroomId = channelData.chatroom?.id;
+                
+                if (!chatroomId) {
+                    addChatMessage('SISTEMA', 'KICK', '❌ No se pudo obtener el ID del chat');
+                    return;
+                }
+                
+                addChatMessage('SISTEMA', 'KICK', `✅ Conectado al canal: ${channel}`);
+                
+                // Conectar con Pusher (websocket de Kick)
+                const pusherKey = 'eb1d5f283081a78b932c';
+                kickWs = new WebSocket(`wss://ws-us2.pusher.com/app/${pusherKey}?protocol=7&client=js&version=7.0.3&flash=false`);
+                
+                kickWs.onopen = () => {
+                    // Suscribirse al canal de chat
+                    const subscribeMsg = JSON.stringify({
+                        event: 'pusher:subscribe',
+                        data: {
+                            auth: '',
+                            channel: `chatrooms.${chatroomId}.v2`
+                        }
+                    });
+                    kickWs.send(subscribeMsg);
+                    
+                    addChatMessage('SISTEMA', 'KICK', '✅ Conectado al chat de Kick');
+                    elements.status.textContent = '🟢 Estado: Leyendo Kick';
+                    elements.status.className = 'status active';
+                };
+                
+                kickWs.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        // Responder a ping
+                        if (data.event === 'pusher:ping') {
+                            kickWs.send(JSON.stringify({ event: 'pusher:pong', data: {} }));
+                            return;
+                        }
+                        
+                        // Procesar mensajes de chat
+                        if (data.event === 'App\\Events\\ChatMessageEvent') {
+                            const messageData = JSON.parse(data.data);
+                            const username = messageData.sender?.username || 'Usuario';
+                            const message = messageData.content || '';
+                            
+                            if (message) {
+                                addChatMessage('KICK', username, message);
+                            }
+                        }
+                        
+                    } catch (e) {
+                        console.error('Error procesando mensaje de Kick:', e);
+                    }
+                };
+                
+                kickWs.onerror = (error) => {
+                    console.error('Kick WebSocket error:', error);
+                    addChatMessage('SISTEMA', 'ERROR', 'Error al conectar con Kick');
+                };
+                
+                kickWs.onclose = () => {
+                    addChatMessage('SISTEMA', 'KICK', '⚠️ Desconectado de Kick');
+                    if (isReading) {
+                        setTimeout(() => {
+                            if (isReading) {
+                                addChatMessage('SISTEMA', 'KICK', '🔄 Reconectando...');
+                                startKickReading();
+                            }
+                        }, 5000);
+                    }
+                };
+                
+            } catch (error) {
+                addChatMessage('SISTEMA', 'ERROR', `Error: ${error.message}`);
+            }
+        }
         async function startTiktokReading() {
             const username = elements.tiktokKey.value.trim();
             let ws = null;
@@ -896,11 +1088,23 @@
                 window.tiktokWs = null;
             }
             
+            if (twitchWs) {
+                twitchWs.close();
+                twitchWs = null;
+            }
+            
+            if (kickWs) {
+                kickWs.close();
+                kickWs = null;
+            }
+            
             speechSynthesis.cancel();
             messageQueue = [];
             
             elements.btnYoutube.disabled = false;
             elements.btnTiktok.disabled = false;
+            elements.btnTwitch.disabled = false;
+            elements.btnKick.disabled = false;
             elements.btnBoth.disabled = false;
             elements.btnStop.disabled = true;
             
@@ -913,7 +1117,9 @@
         // Event Listeners
         elements.btnYoutube.addEventListener('click', () => startReading('youtube'));
         elements.btnTiktok.addEventListener('click', () => startReading('tiktok'));
-        elements.btnBoth.addEventListener('click', () => startReading('both'));
+        elements.btnTwitch.addEventListener('click', () => startReading('twitch'));
+        elements.btnKick.addEventListener('click', () => startReading('kick'));
+        elements.btnBoth.addEventListener('click', () => startReading('all'));
         elements.btnStop.addEventListener('click', stopReading);
         elements.btnTest.addEventListener('click', () => {
             speak('¡Hola! Esta es una prueba de voz. El sistema está funcionando correctamente.');
