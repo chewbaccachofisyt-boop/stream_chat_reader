@@ -3,304 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stream Chat Reader</title>
+    <title>Stream Chat Reader - TTS Web</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-            background: #141414;
-            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            transition: background 0.3s, color 0.3s;
         }
-        body.light-mode {
-            background: #f5f5f5;
-            color: #333;
-        }
+
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
+
         .header {
-            margin-bottom: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
             text-align: center;
-            position: relative;
         }
-        .theme-toggle {
-            position: absolute;
-            top: 0;
-            right: 0;
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #667eea;
+            margin-bottom: 20px;
+            font-weight: bold;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
-        .theme-toggle label {
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .input-group input {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-group select,
+        .control-group input[type="range"] {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+        }
+
+        .control-group input[type="range"] {
             cursor: pointer;
+        }
+
+        .slider-value {
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-label {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.9rem;
-            color: #b3b3b3;
-        }
-        body.light-mode .theme-toggle label {
-            color: #666;
-        }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 26px;
-        }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #555;
-            transition: .4s;
-            border-radius: 26px;
+            font-size: 1em;
         }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
+
+        .checkbox-label input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
         }
-        input:checked + .slider {
-            background-color: #2563eb;
-        }
-        input:checked + .slider:before {
-            transform: translateX(24px);
-        }
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            letter-spacing: -1px;
-        }
-        .subtitle {
-            color: #888;
-            font-size: 1.1rem;
-            font-weight: 300;
-        }
-        .platform-logos {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .platform-logo {
-            width: 40px;
-            height: 40px;
-            object-fit: contain;
-            opacity: 0.7;
-            transition: opacity 0.3s;
-        }
-        .platform-logo:hover {
-            opacity: 1;
-        }
-        .section {
-            background: #1f1f1f;
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 20px;
-            transition: background 0.3s;
-        }
-        body.light-mode .section {
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .section-title {
-            font-size: 1.2rem;
-            margin-bottom: 16px;
-            font-weight: 600;
-            color: #e5e5e5;
-            transition: color 0.3s;
-        }
-        body.light-mode .section-title {
-            color: #333;
-        }
-        .input-group {
-            margin-bottom: 16px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: #b3b3b3;
-            font-weight: 500;
-        }
-        input, select {
-            width: 100%;
-            padding: 12px 16px;
-            background: #333;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #fff;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-        body.light-mode input,
-        body.light-mode select {
-            background: #fff;
-            border: 1px solid #ddd;
-            color: #333;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #2563eb;
-            background: #2a2a2a;
-        }
-        body.light-mode input:focus,
-        body.light-mode select:focus {
-            background: #fff;
-            border-color: #2563eb;
-        }
-        .voice-selector {
+
+        .button-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 15px;
+            margin-top: 20px;
         }
-        .voice-option {
-            background: #333;
-            padding: 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.3s;
-            text-align: center;
-        }
-        body.light-mode .voice-option {
-            background: #f0f0f0;
-            border-color: transparent;
-        }
-        .voice-option:hover {
-            background: #404040;
-            transform: translateY(-2px);
-        }
-        body.light-mode .voice-option:hover {
-            background: #e0e0e0;
-        }
-        .voice-option.active {
-            border-color: #2563eb;
-            background: #1e3a8a;
-        }
-        body.light-mode .voice-option.active {
-            background: #dbeafe;
-            border-color: #2563eb;
-        }
-        .voice-name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .voice-lang {
-            font-size: 0.8rem;
-            color: #888;
-        }
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-        }
+
         .btn {
-            padding: 14px 28px;
+            padding: 18px 30px;
             border: none;
-            border-radius: 4px;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: bold;
             cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
             transition: all 0.3s;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
+
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
+
         .btn:active {
             transform: translateY(0);
         }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-youtube {
-            background: #ff0000;
-            color: white;
+            background: #FF0000;
         }
-        .btn-youtube:hover { background: #cc0000; }
+
         .btn-tiktok {
-            background: #00f2ea;
-            color: #000;
+            background: #000000;
         }
-        .btn-tiktok:hover { background: #00c2bc; }
-        .btn-twitch {
-            background: #9146ff;
-            color: white;
+
+        .btn-both {
+            background: #10b981;
         }
-        .btn-twitch:hover { background: #772ce8; }
-        .btn-all {
-            background: #2563eb;
-            color: white;
-        }
-        .btn-all:hover { background: #1d4ed8; }
+
         .btn-stop {
-            background: #555;
-            color: white;
+            background: #ef4444;
         }
-        .btn-stop:hover { background: #ef4444; }
+
+        .btn-test {
+            background: #8b5cf6;
+        }
+
         .chat-container {
-            background: #0a0a0a;
-            border-radius: 8px;
-            height: 500px;
-            overflow-y: auto;
+            background: #1e1e1e;
+            border-radius: 15px;
             padding: 20px;
-            transition: background 0.3s;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #fff;
         }
-        body.light-mode .chat-container {
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
-        }
-        .chat-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        .chat-container::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-        .chat-container::-webkit-scrollbar-thumb {
-            background: #444;
-            border-radius: 4px;
-        }
-        .chat-container::-webkit-scrollbar-thumb:hover {
-            background: #666;
-        }
+
         .chat-message {
-            margin-bottom: 12px;
-            padding: 12px 16px;
-            border-radius: 6px;
-            background: rgba(255,255,255,0.03);
-            border-left: 3px solid #666;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            border-left: 4px solid #667eea;
             animation: slideIn 0.3s ease;
-            transition: background 0.3s;
         }
-        body.light-mode .chat-message {
-            background: #fff;
-            border-left: 3px solid #ccc;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
+
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -311,1163 +244,685 @@
                 transform: translateX(0);
             }
         }
-        .chat-youtube { border-left-color: #ff0000; }
-        .chat-tiktok { border-left-color: #00f2ea; }
-        .chat-twitch { border-left-color: #9146ff; }
-        .chat-sistema { border-left-color: #2563eb; }
-        .chat-username {
-            font-weight: 600;
-            margin-right: 8px;
-            color: #e5e5e5;
-        }
+
         .chat-platform {
-            color: #888;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            margin-right: 8px;
+            color: #667eea;
+            font-weight: bold;
         }
+
+        .chat-youtube {
+            border-left-color: #FF0000;
+        }
+
+        .chat-tiktok {
+            border-left-color: #00f2ea;
+        }
+
+        .chat-username {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
         .chat-text {
-            color: #b3b3b3;
+            color: #e5e7eb;
+            margin-top: 5px;
         }
-        .status-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-        .followers-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-        .followers-item {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
+
+        .status {
+            background: #667eea;
             color: white;
-            transition: transform 0.3s;
-        }
-        .followers-item:hover {
-            transform: translateY(-2px);
-        }
-        body.light-mode .followers-item {
-            background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-        }
-        .followers-item.youtube {
-            background: linear-gradient(135deg, #cc0000 0%, #ff0000 100%);
-        }
-        .followers-item.tiktok {
-            background: linear-gradient(135deg, #000 0%, #00f2ea 100%);
-        }
-        .followers-item.twitch {
-            background: linear-gradient(135deg, #772ce8 0%, #9146ff 100%);
-        }
-        .followers-label {
-            font-size: 0.85rem;
-            opacity: 0.9;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .followers-count {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        .followers-platform {
-            font-size: 0.75rem;
-            opacity: 0.8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .status-item {
-            background: #2a2a2a;
-            padding: 16px;
-            border-radius: 6px;
+            padding: 15px 25px;
+            border-radius: 10px;
             text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.3s;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 20px;
         }
-        body.light-mode .status-item {
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+        .status.active {
+            background: #10b981;
+            animation: pulse 2s infinite;
         }
-        .status-logo {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            opacity: 0.5;
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
-        .status-item.active .status-logo {
-            opacity: 1;
-        }
-        .status-label {
-            font-size: 0.8rem;
-            color: #888;
-            margin-bottom: 4px;
-        }
-        .status-value {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        .status-active { color: #2563eb; }
-        .status-inactive { color: #888; }
+
         .info-box {
-            background: #2a2a2a;
-            border-left: 3px solid #9146ff;
-            padding: 12px 16px;
-            border-radius: 4px;
-            margin-top: 8px;
-            font-size: 0.85rem;
-            color: #b3b3b3;
-            transition: background 0.3s, color 0.3s;
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
         }
-        body.light-mode .info-box {
-            background: #f0f0ff;
-            color: #666;
+
+        .info-box h3 {
+            color: #92400e;
+            margin-bottom: 10px;
         }
-        .info-box a {
-            color: #9146ff;
-            text-decoration: none;
-            font-weight: 600;
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #78350f;
         }
-        .info-box a:hover {
-            text-decoration: underline;
+
+        .info-box li {
+            margin: 5px 0;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
         }
     </style>
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <div class="theme-toggle">
-            <label>
-                <span>🌙 Modo Oscuro</span>
-                <label class="switch">
-                    <input type="checkbox" id="themeToggle" checked>
-                    <span class="slider"></span>
-                </label>
-            </label>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Stream Chat Reader</h1>
+            <p>Lee tus chats de YouTube y TikTok en voz alta mientras juegas</p>
         </div>
-        <h1>🎙️ Stream Chat Reader</h1>
-        <p class="subtitle">Lee tus chats de YouTube, TikTok y Twitch en voz alta mientras juegas</p>
-        <div class="platform-logos">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" alt="YouTube" class="platform-logo">
-            <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok" class="platform-logo">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Twitch_logo.svg" alt="Twitch" class="platform-logo">
-        </div>
-    </div>
 
-    <div class="followers-bar">
-        <div class="followers-item youtube">
-            <div class="followers-label">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" alt="YouTube" style="width: 20px; height: 20px;">
-                Suscriptores
+        <div class="content">
+            <!-- Sección de APIs -->
+            <div class="section">
+                <div class="section-title">🔑 Configuración de APIs</div>
+                <div class="api-grid">
+                    <div class="input-group">
+                        <label for="youtubeKey">YouTube API Key</label>
+                        <input type="text" id="youtubeKey" placeholder="Ingresa tu API Key de YouTube">
+                    </div>
+                    <div class="input-group">
+                        <label for="tiktokKey">TikTok Username (sin @)</label>
+                        <input type="text" id="tiktokKey" placeholder="Ejemplo: tu_usuario">
+                    </div>
+                </div>
             </div>
-            <div class="followers-count" id="youtubeFollowers">---</div>
-            <div class="followers-platform">YouTube</div>
-        </div>
-        <div class="followers-item tiktok">
-            <div class="followers-label">
-                <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok" style="width: 20px; height: 20px;">
-                Seguidores
+
+            <!-- Configuración de Voz -->
+            <div class="section">
+                <div class="section-title">🎵 Configuración de Voz</div>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="voiceSelect">Seleccionar Voz</label>
+                        <select id="voiceSelect">
+                            <option value="">Cargando voces...</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="volumeSlider">
+                            Volumen
+                            <span class="slider-value" id="volumeValue">80%</span>
+                        </label>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="80">
+                    </div>
+                    <div class="control-group">
+                        <label for="speedSlider">
+                            Velocidad
+                            <span class="slider-value" id="speedValue">1.0x</span>
+                        </label>
+                        <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="pitchSlider">
+                            Tono
+                            <span class="slider-value" id="pitchValue">1.0</span>
+                        </label>
+                        <input type="range" id="pitchSlider" min="0.5" max="2" step="0.1" value="1">
+                    </div>
+                </div>
+
+                <div class="checkbox-group" style="margin-top: 20px;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filterBots" checked>
+                        Filtrar mensajes de bots
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="playSound" checked>
+                        Sonido de notificación
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showTimestamp" checked>
+                        Mostrar hora de mensaje
+                    </label>
+                </div>
             </div>
-            <div class="followers-count" id="tiktokFollowers">---</div>
-            <div class="followers-platform">TikTok</div>
-        </div>
-        <div class="followers-item twitch">
-            <div class="followers-label">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Twitch_logo.svg" alt="Twitch" style="width: 20px; height: 20px;">
-                Seguidores
+
+            <!-- Botones de Control -->
+            <div class="section">
+                <div class="section-title">🎮 Control de Lectura</div>
+                <div class="button-grid">
+                    <button class="btn btn-youtube" id="btnYoutube">
+                        ▶️ Iniciar YouTube
+                    </button>
+                    <button class="btn btn-tiktok" id="btnTiktok">
+                        ▶️ Iniciar TikTok
+                    </button>
+                    <button class="btn btn-both" id="btnBoth">
+                        ▶️ Iniciar Ambos
+                    </button>
+                    <button class="btn btn-stop" id="btnStop" disabled>
+                        ⏹️ Detener Todo
+                    </button>
+                    <button class="btn btn-test" id="btnTest">
+                        🔊 Probar Voz
+                    </button>
+                </div>
             </div>
-            <div class="followers-count" id="twitchFollowers">---</div>
-            <div class="followers-platform">Twitch</div>
-        </div>
-    </div>
 
-    <div class="status-bar">
-        <div class="status-item" id="statusItemYoutube">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" alt="YouTube" class="status-logo">
-            <div class="status-label">YouTube</div>
-            <div class="status-value status-inactive" id="statusYoutube">●</div>
-        </div>
-        <div class="status-item" id="statusItemTiktok">
-            <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok" class="status-logo">
-            <div class="status-label">TikTok</div>
-            <div class="status-value status-inactive" id="statusTiktok">●</div>
-        </div>
-        <div class="status-item" id="statusItemTwitch">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Twitch_logo.svg" alt="Twitch" class="status-logo">
-            <div class="status-label">Twitch</div>
-            <div class="status-value status-inactive" id="statusTwitch">●</div>
-        </div>
-        <div class="status-item">
-            <div class="status-label">Mensajes Leídos</div>
-            <div class="status-value" id="messageCount">0</div>
-        </div>
-    </div>
+            <!-- Chat en Vivo -->
+            <div class="section">
+                <div class="section-title">💬 Chat en Vivo</div>
+                <div class="chat-container" id="chatContainer">
+                    <div class="chat-message">
+                        <div><span class="chat-platform">[SISTEMA]</span></div>
+                        <div class="chat-text">Esperando conexión... Presiona un botón para iniciar.</div>
+                    </div>
+                </div>
+            </div>
 
-    <div class="section">
-        <div class="section-title">⚙️ Configuración</div>
-        
-        <div class="input-group">
-            <label>YouTube API Key:</label>
-            <input id="youtubeKey" type="password" placeholder="Ingresa tu API Key de YouTube">
-        </div>
+            <!-- Estado -->
+            <div class="status" id="status">
+                🟡 Estado: Esperando inicio
+            </div>
 
-        <div class="input-group">
-            <label>YouTube Channel ID (opcional):</label>
-            <input id="youtubeChannelId" placeholder="ID de tu canal para filtrar solo tus streams">
-            <span style="color: #888; font-size: 0.85rem; margin-top: 8px; display: block;">
-                Deja vacío para usar el primer stream activo encontrado
-            </span>
-        </div>
-        
-        <div class="input-group">
-            <label>TikTok Username:</label>
-            <input id="tiktokUser" placeholder="Ingresa tu usuario de TikTok">
-        </div>
-
-        <div class="input-group">
-            <label>Twitch Channel:</label>
-            <input id="twitchChannel" placeholder="Nombre de tu canal de Twitch (sin @)">
+            <!-- Información -->
             <div class="info-box">
-                📌 <strong>Twitch OAuth Token:</strong> Genera tu token en 
-                <a href="https://twitchtokengenerator.com/" target="_blank">twitchtokengenerator.com</a>
-                <br>Selecciona "Bot Chat Token" y copia solo el "Access Token" (sin oauth:)
+                <h3>📌 Instrucciones de Uso:</h3>
+                <ul>
+                    <li><strong>YouTube:</strong> 
+                        <ol style="margin-left: 20px; margin-top: 5px;">
+                            <li>Ve a <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a></li>
+                            <li>Crea un proyecto nuevo</li>
+                            <li>Habilita "YouTube Data API v3"</li>
+                            <li>Crea credenciales (API Key)</li>
+                            <li>Copia y pega tu API Key aquí</li>
+                            <li>¡Debes estar transmitiendo EN VIVO en YouTube!</li>
+                        </ol>
+                    </li>
+                    <li><strong>TikTok (Con TikFinity):</strong> 
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>✅ Solo necesitas tu nombre de usuario (sin @)</li>
+                            <li>✅ Funciona directamente sin backend</li>
+                            <li>✅ Conexión estable y confiable</li>
+                            <li>✅ Debes estar transmitiendo EN VIVO</li>
+                            <li>⚠️ Si tu usuario es @juan123, ingresa solo: juan123</li>
+                        </ul>
+                    </li>
+                    <li><strong>Estado EN VIVO:</strong> La app te dirá si estás en vivo o no al conectar</li>
+                    <li><strong>Voces:</strong> El navegador usará las voces instaladas en tu sistema</li>
+                    <li><strong>Reconexión automática:</strong> Si se desconecta, intentará reconectar automáticamente</li>
+                </ul>
             </div>
-            <input id="twitchToken" type="password" placeholder="Pega tu token aquí" style="margin-top: 8px;">
-        </div>
-
-        <div class="input-group">
-            <label>Selecciona la Voz:</label>
-            <div class="voice-selector" id="voiceSelector"></div>
-        </div>
-
-        <div class="input-group">
-            <label>Velocidad de Voz:</label>
-            <input type="range" id="voiceRate" min="0.5" max="2" step="0.1" value="1" style="width: 100%;">
-            <span id="rateValue" style="color: #888; font-size: 0.9rem;">1.0x</span>
-        </div>
-
-        <div class="input-group">
-            <label>Volumen de Voz:</label>
-            <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="1" style="width: 100%;">
-            <span id="volumeValue" style="color: #888; font-size: 0.9rem;">100%</span>
-        </div>
-
-        <div class="input-group">
-            <label>Filtros de TikTok:</label>
-            <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="enableLikes" checked style="width: auto; cursor: pointer;">
-                    <span style="color: #e5e5e5;">Anunciar Likes</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="enableGifts" checked style="width: auto; cursor: pointer;">
-                    <span style="color: #e5e5e5;">Anunciar Regalos</span>
-                </label>
-            </div>
-        </div>
-
-        <div class="input-group">
-            <label>Límite mínimo de Likes para anunciar:</label>
-            <input type="number" id="minLikes" value="5" min="1" max="1000" style="width: 150px;">
-            <span style="color: #888; font-size: 0.9rem; margin-left: 10px;">likes</span>
-        </div>
-
-        <div class="input-group">
-            <label>Filtro Anti-Spam:</label>
-            <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="enableSpamFilter" checked style="width: auto; cursor: pointer;">
-                    <span style="color: #e5e5e5;">Activar filtro de spam</span>
-                </label>
-            </div>
-            <span style="color: #888; font-size: 0.85rem; margin-top: 8px; display: block;">
-                Bloquea: letras repetidas (AAAAA), patrones spam (XDXDXD), mensajes duplicados
-            </span>
-        </div>
-
-        <div class="input-group">
-            <label>Opciones de Lectura:</label>
-            <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="readPlatform" checked style="width: auto; cursor: pointer;">
-                    <span style="color: #e5e5e5;">Leer nombre de la plataforma</span>
-                </label>
-            </div>
-            <span style="color: #888; font-size: 0.85rem; margin-top: 8px; display: block;">
-                Cuando está activado, la voz dirá "YouTube, usuario dice..." o "Twitch, usuario dice..."
-            </span>
         </div>
     </div>
 
-    <div class="section">
-        <div class="section-title">🎮 Controles</div>
-        <div class="controls">
-            <button class="btn btn-youtube" id="btnYoutube">▶️ YouTube</button>
-            <button class="btn btn-tiktok" id="btnTiktok">▶️ TikTok</button>
-            <button class="btn btn-twitch" id="btnTwitch">▶️ Twitch</button>
-            <button class="btn btn-all" id="btnAll">▶️ Todas</button>
-            <button class="btn btn-stop" id="btnStop">⏹️ Detener</button>
-        </div>
-    </div>
+    <script>
+        // Variables globales
+        let isReading = false;
+        let youtubeInterval = null;
+        let tiktokInterval = null;
+        let messageQueue = [];
+        let isSpeaking = false;
+        let voices = [];
 
-    <div class="section">
-        <div class="section-title">💬 Chat en Vivo</div>
-        <div id="chatContainer" class="chat-container"></div>
-    </div>
-</div>
-
-<script>
-let youtubeInterval = null;
-let messageQueue = [];
-let isSpeaking = false;
-let selectedVoice = null;
-let availableVoices = [];
-let messageCount = 0;
-let tiktokSocket = null;
-let twitchSocket = null;
-let userMessageCache = new Map();
-let currentYouTubeChatId = null;
-let currentTikTokUser = null;
-let currentTwitchChannel = null;
-let keepAliveInterval = null;
-let tiktokReconnectAttempts = 0;
-let tiktokReconnectInterval = null;
-let tiktokPingInterval = null;
-let youtubeReconnectAttempts = 0;
-let twitchReconnectAttempts = 0;
-let twitchPingInterval = null;
-
-// --- FORMATEAR NÚMEROS ---
-function formatNumber(num) {
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
-    }
-    return num.toString();
-}
-
-// --- OBTENER SEGUIDORES ---
-async function updateFollowerCounts() {
-    // YouTube
-    const youtubeKey = document.getElementById('youtubeKey').value.trim();
-    const youtubeChannelId = document.getElementById('youtubeChannelId').value.trim();
-    
-    if (youtubeKey && youtubeChannelId) {
-        try {
-            const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${youtubeChannelId}&key=${youtubeKey}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.items && data.items[0]) {
-                const count = parseInt(data.items[0].statistics.subscriberCount);
-                document.getElementById('youtubeFollowers').textContent = formatNumber(count);
-            }
-        } catch (e) {
-            console.error('Error getting YouTube followers:', e);
-        }
-    }
-
-    // TikTok (usando API del servidor)
-    const tiktokUser = document.getElementById('tiktokUser').value.trim();
-    if (tiktokUser) {
-        try {
-            const res = await fetch('https://tiktok-chat-server.onrender.com/api/check-live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: tiktokUser })
-            });
-            const data = await res.json();
-            if (data.followers) {
-                document.getElementById('tiktokFollowers').textContent = formatNumber(data.followers);
-            }
-        } catch (e) {
-            console.error('Error getting TikTok followers:', e);
-        }
-    }
-
-    // Twitch
-    const twitchChannel = document.getElementById('twitchChannel').value.trim();
-    if (twitchChannel) {
-        try {
-            const url = `https://decapi.me/twitch/followcount/${twitchChannel}`;
-            const res = await fetch(url);
-            const count = await res.text();
-            if (count && !isNaN(count)) {
-                document.getElementById('twitchFollowers').textContent = formatNumber(parseInt(count));
-            }
-        } catch (e) {
-            console.error('Error getting Twitch followers:', e);
-        }
-    }
-}
-
-// --- MANTENER ACTIVO EN SEGUNDO PLANO ---
-function startKeepAlive() {
-    // Evitar que el navegador pause la página
-    if (keepAliveInterval) clearInterval(keepAliveInterval);
-    
-    keepAliveInterval = setInterval(() => {
-        // Pequeña actividad para mantener la página activa
-        document.title = `🎙️ Chat Reader (${messageCount} msgs)`;
-    }, 5000);
-}
-
-function stopKeepAlive() {
-    if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-        keepAliveInterval = null;
-    }
-    document.title = 'Stream Chat Reader';
-}
-
-// Detectar cuando la pestaña se vuelve visible/invisible
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        console.log('Pestaña oculta - manteniendo conexiones activas');
-    } else {
-        console.log('Pestaña visible');
-        // Reintentar lectura de mensajes en cola
-        if (!isSpeaking && messageQueue.length > 0) {
-            processQueue();
-        }
-    }
-});
-
-// --- MODO OSCURO/CLARO ---
-document.getElementById('themeToggle').addEventListener('change', function() {
-    if (this.checked) {
-        document.body.classList.remove('light-mode');
-        this.parentElement.parentElement.querySelector('span').textContent = '🌙 Modo Oscuro';
-    } else {
-        document.body.classList.add('light-mode');
-        this.parentElement.parentElement.querySelector('span').textContent = '☀️ Modo Claro';
-    }
-});
-
-// --- CARGAR VOCES ---
-function loadVoices() {
-    availableVoices = speechSynthesis.getVoices();
-    const voiceSelector = document.getElementById('voiceSelector');
-    voiceSelector.innerHTML = '';
-
-    const spanishOnly = availableVoices.filter(v => v.lang.startsWith('es'));
-    
-    spanishOnly.forEach((voice, index) => {
-        const div = document.createElement('div');
-        div.className = 'voice-option';
-        if (index === 0) {
-            div.classList.add('active');
-            selectedVoice = voice;
-        }
-        
-        let displayName = voice.name;
-        displayName = displayName.replace(/^(Microsoft|Google|Apple|Android)\s+/i, '');
-        displayName = displayName.replace(/\s*\(.*?\)\s*/g, '').trim();
-        if (displayName.length > 20) {
-            displayName = displayName.split('-')[0].trim();
-        }
-        
-        div.innerHTML = `
-            <div class="voice-name">${displayName}</div>
-            <div class="voice-lang">${voice.lang}</div>
-        `;
-        div.onclick = () => {
-            document.querySelectorAll('.voice-option').forEach(el => el.classList.remove('active'));
-            div.classList.add('active');
-            selectedVoice = voice;
+        // Elementos del DOM
+        const elements = {
+            youtubeKey: document.getElementById('youtubeKey'),
+            tiktokKey: document.getElementById('tiktokKey'),
+            voiceSelect: document.getElementById('voiceSelect'),
+            volumeSlider: document.getElementById('volumeSlider'),
+            speedSlider: document.getElementById('speedSlider'),
+            pitchSlider: document.getElementById('pitchSlider'),
+            volumeValue: document.getElementById('volumeValue'),
+            speedValue: document.getElementById('speedValue'),
+            pitchValue: document.getElementById('pitchValue'),
+            filterBots: document.getElementById('filterBots'),
+            playSound: document.getElementById('playSound'),
+            showTimestamp: document.getElementById('showTimestamp'),
+            btnYoutube: document.getElementById('btnYoutube'),
+            btnTiktok: document.getElementById('btnTiktok'),
+            btnBoth: document.getElementById('btnBoth'),
+            btnStop: document.getElementById('btnStop'),
+            btnTest: document.getElementById('btnTest'),
+            chatContainer: document.getElementById('chatContainer'),
+            status: document.getElementById('status')
         };
-        voiceSelector.appendChild(div);
-    });
-}
 
-speechSynthesis.onvoiceschanged = loadVoices;
-loadVoices();
-
-// --- VELOCIDAD Y VOLUMEN DE VOZ ---
-document.getElementById('voiceRate').oninput = (e) => {
-    document.getElementById('rateValue').textContent = e.target.value + 'x';
-};
-
-document.getElementById('voiceVolume').oninput = (e) => {
-    const percentage = Math.round(e.target.value * 100);
-    document.getElementById('volumeValue').textContent = percentage + '%';
-};
-
-// --- VOZ ---
-function speak(text) {
-    // Verificar que speechSynthesis esté disponible
-    if (!window.speechSynthesis) {
-        console.error('Speech Synthesis no disponible');
-        return;
-    }
-
-    // Cancelar si hay un mensaje hablando (para reiniciar)
-    if (isSpeaking) {
-        speechSynthesis.cancel();
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = selectedVoice;
-    utterance.rate = parseFloat(document.getElementById('voiceRate').value);
-    utterance.pitch = 1;
-    utterance.volume = parseFloat(document.getElementById('voiceVolume').value);
-    
-    isSpeaking = true;
-    
-    utterance.onend = () => { 
-        isSpeaking = false; 
-        processQueue(); 
-    };
-    
-    utterance.onerror = (error) => {
-        console.error('Error en speech:', error);
-        isSpeaking = false;
-        processQueue();
-    };
-    
-    // Iniciar speech
-    speechSynthesis.speak(utterance);
-    
-    // Mantener activo el speech synthesis
-    setTimeout(() => {
-        if (speechSynthesis.paused) {
-            speechSynthesis.resume();
-        }
-    }, 100);
-}
-
-function addToQueue(text) {
-    messageQueue.push(text);
-    if (!isSpeaking) processQueue();
-}
-
-function processQueue() {
-    if (messageQueue.length > 0 && !isSpeaking) {
-        speak(messageQueue.shift());
-    }
-}
-
-// --- CHAT VISUAL ---
-function addChatMessage(platform, username, message) {
-    if (platform !== 'SISTEMA' && document.getElementById('enableSpamFilter').checked) {
-        const hasSpamPattern = (text) => {
-            if (/(.)\1{3,}/i.test(text)) return true;
-            if (/(.{2,})\1{2,}/i.test(text)) return true;
-            if (/(\p{Emoji})\1{4,}/u.test(text)) return true;
-            return false;
-        };
-        
-        if (hasSpamPattern(message)) {
-            console.log('Spam detectado:', message);
-            return;
-        }
-        
-        const userKey = `${platform}-${username}`;
-        const now = Date.now();
-        
-        if (userMessageCache.has(userKey)) {
-            const lastMessage = userMessageCache.get(userKey);
-            if (lastMessage.text === message && (now - lastMessage.time) < 5000) {
-                return;
+        // Inicializar voces
+        function loadVoices() {
+            voices = speechSynthesis.getVoices();
+            elements.voiceSelect.innerHTML = '';
+            
+            const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+            const otherVoices = voices.filter(v => !v.lang.startsWith('es'));
+            
+            if (spanishVoices.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = 'Voces en Español';
+                spanishVoices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    optgroup.appendChild(option);
+                });
+                elements.voiceSelect.appendChild(optgroup);
+            }
+            
+            if (otherVoices.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = 'Otras Voces';
+                otherVoices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    optgroup.appendChild(option);
+                });
+                elements.voiceSelect.appendChild(optgroup);
             }
         }
-        
-        userMessageCache.set(userKey, { text: message, time: now });
-        
-        for (let [key, value] of userMessageCache.entries()) {
-            if (now - value.time > 10000) {
-                userMessageCache.delete(key);
-            }
-        }
-    }
-    
-    const div = document.createElement('div');
-    div.className = `chat-message chat-${platform.toLowerCase()}`;
-    div.innerHTML = `
-        <span class="chat-platform">[${platform}]</span>
-        <span class="chat-username">${username}</span>
-        <span class="chat-text">${message}</span>
-    `;
-    const container = document.getElementById('chatContainer');
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-    
-    if (platform !== 'SISTEMA') {
-        const readPlatform = document.getElementById('readPlatform').checked;
-        const voiceText = readPlatform 
-            ? `${platform}, ${username} dice: ${message}` 
-            : `${username} dice: ${message}`;
-        addToQueue(voiceText);
-        messageCount++;
-        document.getElementById('messageCount').textContent = messageCount;
-    }
-}
 
-// --- YOUTUBE ---
-async function startYouTube() {
-    // Detener conexión anterior si existe
-    if (youtubeInterval) {
-        clearTimeout(youtubeInterval);
-        youtubeInterval = null;
-        currentYouTubeChatId = null;
-    }
+        // Cargar voces cuando estén disponibles
+        speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
 
-    const apiKey = document.getElementById('youtubeKey').value.trim();
-    const channelId = document.getElementById('youtubeChannelId').value.trim();
-    
-    if (!apiKey) {
-        alert('Falta la API Key de YouTube');
-        return;
-    }
-    
-    startKeepAlive(); // Mantener página activa
-    document.getElementById('statusYoutube').className = 'status-value status-active';
-    document.getElementById('statusItemYoutube').classList.add('active');
-    addChatMessage('SISTEMA', 'YouTube', 'Conectando al chat...');
-    
-    // Actualizar contador de seguidores
-    updateFollowerCounts();
-    
-    try {
-        let broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet&broadcastStatus=active&key=${apiKey}`;
-        
-        if (channelId) {
-            broadcastUrl += `&channelId=${channelId}`;
-        }
-        
-        const res = await fetch(broadcastUrl);
-        const data = await res.json();
-        
-        if (!data.items || data.items.length === 0) {
-            addChatMessage('SISTEMA', 'YouTube', '❌ No se encontró stream activo');
-            document.getElementById('statusYoutube').className = 'status-value status-inactive';
-            document.getElementById('statusItemYoutube').classList.remove('active');
-            return;
-        }
-        
-        const liveChatId = data.items[0].snippet.liveChatId;
-        currentYouTubeChatId = liveChatId;
-        
-        addChatMessage('SISTEMA', 'YouTube', `✅ Conectado al chat en vivo${channelId ? ' de tu canal' : ''}`);
-        
-        let processedMessages = new Set();
-        let failCount = 0; // Contador de fallos
-        
-        async function fetchChat() {
-            if (currentYouTubeChatId !== liveChatId) {
-                return;
-            }
+        // Actualizar valores de sliders
+        elements.volumeSlider.addEventListener('input', (e) => {
+            elements.volumeValue.textContent = `${e.target.value}%`;
+        });
 
-            try {
-                const chatUrl = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
-                const r = await fetch(chatUrl);
-                const d = await r.json();
+        elements.speedSlider.addEventListener('input', (e) => {
+            elements.speedValue.textContent = `${e.target.value}x`;
+        });
+
+        elements.pitchSlider.addEventListener('input', (e) => {
+            elements.pitchValue.textContent = e.target.value;
+        });
+
+        // Función para hablar
+        function speak(text) {
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(text);
                 
-                if (d.items) {
-                    failCount = 0; // Resetear contador de fallos
-                    d.items.forEach(i => {
-                        if (!processedMessages.has(i.id)) {
-                            addChatMessage('YouTube', i.authorDetails.displayName, i.snippet.displayMessage);
-                            processedMessages.add(i.id);
+                const voiceIndex = parseInt(elements.voiceSelect.value);
+                if (voices[voiceIndex]) {
+                    utterance.voice = voices[voiceIndex];
+                }
+                
+                utterance.volume = elements.volumeSlider.value / 100;
+                utterance.rate = parseFloat(elements.speedSlider.value);
+                utterance.pitch = parseFloat(elements.pitchSlider.value);
+                
+                utterance.onend = () => {
+                    isSpeaking = false;
+                    processQueue();
+                    resolve();
+                };
+                
+                utterance.onerror = () => {
+                    isSpeaking = false;
+                    processQueue();
+                    resolve();
+                };
+                
+                isSpeaking = true;
+                speechSynthesis.speak(utterance);
+            });
+        }
+
+        // Procesar cola de mensajes
+        function processQueue() {
+            if (messageQueue.length > 0 && !isSpeaking) {
+                const message = messageQueue.shift();
+                speak(message);
+            }
+        }
+
+        // Agregar mensaje a la cola
+        function addToQueue(text) {
+            messageQueue.push(text);
+            if (!isSpeaking) {
+                processQueue();
+            }
+        }
+
+        // Agregar mensaje al chat
+        function addChatMessage(platform, username, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const platformClass = platform.toLowerCase();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message chat-${platformClass}`;
+            
+            let timeStr = elements.showTimestamp.checked ? `[${timestamp}] ` : '';
+            
+            messageDiv.innerHTML = `
+                <div>
+                    <span class="chat-platform">[${platform}]</span>
+                    ${timeStr}
+                    <span class="chat-username">${username}</span>
+                </div>
+                <div class="chat-text">${message}</div>
+            `;
+            
+            elements.chatContainer.appendChild(messageDiv);
+            elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+            
+            // Filtrar bots
+            const isBot = /bot|nightbot|streamelements|moobot/i.test(username);
+            if (elements.filterBots.checked && isBot) {
+                return;
+            }
+            
+            // Reproducir sonido
+            if (elements.playSound.checked) {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBCx+zPDTgjMGGGS36+OZTgwOTKXh8LRkHAU2jdXwyXwqBSh4x/DY=');
+                audio.volume = 0.3;
+                audio.play().catch(() => {});
+            }
+            
+            // Leer en voz alta
+            const textToSpeak = `${username} dice: ${message}`;
+            addToQueue(textToSpeak);
+        }
+
+        // Lectura REAL de YouTube
+        async function startYoutubeReading() {
+            const apiKey = elements.youtubeKey.value.trim();
+            let liveChatId = null;
+            let nextPageToken = null;
+            let isLive = false;
+            
+            // Función para obtener el stream activo
+            async function getLiveStream() {
+                try {
+                    // Primero necesitamos obtener el liveBroadcast activo
+                    const broadcastUrl = `https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,contentDetails&broadcastStatus=active&key=${apiKey}`;
+                    
+                    const response = await fetch(broadcastUrl);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        addChatMessage('SISTEMA', 'ERROR', `YouTube Error: ${data.error.message}`);
+                        stopReading();
+                        return false;
+                    }
+                    
+                    if (data.items && data.items.length > 0) {
+                        liveChatId = data.items[0].snippet.liveChatId;
+                        isLive = true;
+                        addChatMessage('SISTEMA', 'YOUTUBE', '✅ ¡Estás EN VIVO! Conectado al chat');
+                        return true;
+                    } else {
+                        isLive = false;
+                        addChatMessage('SISTEMA', 'YOUTUBE', '❌ NO estás en vivo actualmente');
+                        stopReading();
+                        return false;
+                    }
+                } catch (error) {
+                    addChatMessage('SISTEMA', 'ERROR', `Error al conectar con YouTube: ${error.message}`);
+                    stopReading();
+                    return false;
+                }
+            }
+            
+            // Función para leer mensajes del chat
+            async function readChatMessages() {
+                if (!liveChatId || !isLive) return;
+                
+                try {
+                    let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${apiKey}`;
+                    
+                    if (nextPageToken) {
+                        url += `&pageToken=${nextPageToken}`;
+                    }
+                    
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        addChatMessage('SISTEMA', 'ERROR', `Error: ${data.error.message}`);
+                        return;
+                    }
+                    
+                    if (data.items) {
+                        data.items.forEach(item => {
+                            const username = item.authorDetails.displayName;
+                            const message = item.snippet.displayMessage;
+                            addChatMessage('YOUTUBE', username, message);
+                        });
+                    }
+                    
+                    nextPageToken = data.nextPageToken;
+                    
+                    // Programar la siguiente lectura según el pollingIntervalMillis
+                    const pollInterval = data.pollingIntervalMillis || 5000;
+                    youtubeInterval = setTimeout(readChatMessages, pollInterval);
+                    
+                } catch (error) {
+                    addChatMessage('SISTEMA', 'ERROR', `Error al leer mensajes: ${error.message}`);
+                }
+            }
+            
+            // Iniciar el proceso
+            const connected = await getLiveStream();
+            if (connected) {
+                readChatMessages();
+            }
+        }
+
+        // Lectura REAL de TikTok usando TikFinity
+        async function startTiktokReading() {
+            const username = elements.tiktokKey.value.trim();
+            let ws = null;
+            
+            addChatMessage('SISTEMA', 'TIKTOK', '🔄 Conectando con TikFinity...');
+            
+            try {
+                // Conectar con la API pública de TikFinity
+                const apiUrl = `https://tiktok.eulerstream.com/@${username}`;
+                
+                addChatMessage('SISTEMA', 'TIKTOK', `🔍 Verificando si @${username} está en vivo...`);
+                
+                // Crear conexión WebSocket con TikFinity
+                ws = new WebSocket(apiUrl);
+                
+                ws.onopen = () => {
+                    addChatMessage('SISTEMA', 'TIKTOK', '✅ ¡Conectado a TikTok Live!');
+                    elements.status.textContent = '🟢 Estado: Leyendo TikTok en vivo';
+                    elements.status.className = 'status active';
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        // Mensaje de chat
+                        if (data.type === 'chat' || data.event === 'chat') {
+                            const user = data.nickname || data.uniqueId || data.username || 'Usuario';
+                            const message = data.comment || data.message || data.text || '';
                             
-                            if (processedMessages.size > 100) {
-                                const firstItem = processedMessages.values().next().value;
-                                processedMessages.delete(firstItem);
+                            if (message) {
+                                addChatMessage('TIKTOK', user, message);
                             }
                         }
-                    });
-                }
-                
-                if (currentYouTubeChatId === liveChatId) {
-                    const pollInterval = d.pollingIntervalMillis || 5000;
-                    youtubeInterval = setTimeout(fetchChat, pollInterval);
-                }
-            } catch (e) {
-                console.error('Error fetching YouTube chat:', e);
-                failCount++;
-                
-                // Si falla 3 veces seguidas, notificar
-                if (failCount >= 3) {
-                    addChatMessage('SISTEMA', 'YouTube', '⚠️ Problemas de conexión, reintentando...');
-                }
-                
-                // Reintentar después de 10 segundos
-                if (currentYouTubeChatId === liveChatId) {
-                    youtubeInterval = setTimeout(fetchChat, 10000);
-                }
-            }
-        }
-        
-        fetchChat();
-    } catch (e) {
-        addChatMessage('SISTEMA', 'ERROR', e.message);
-        document.getElementById('statusYoutube').className = 'status-value status-inactive';
-        document.getElementById('statusItemYoutube').classList.remove('active');
-    }
-}
-
-// --- TIKTOK ---
-async function startTikTok() {
-    // Detener conexión anterior si existe
-    if (tiktokSocket) {
-        tiktokSocket.disconnect();
-        tiktokSocket = null;
-    }
-    
-    // Limpiar intervalos de reconexión
-    if (tiktokReconnectInterval) {
-        clearInterval(tiktokReconnectInterval);
-        tiktokReconnectInterval = null;
-    }
-    
-    if (tiktokPingInterval) {
-        clearInterval(tiktokPingInterval);
-        tiktokPingInterval = null;
-    }
-
-    const username = document.getElementById('tiktokUser').value.trim().toLowerCase();
-    if (!username) {
-        alert('Falta el usuario de TikTok');
-        return;
-    }
-
-    currentTikTokUser = username;
-    tiktokReconnectAttempts = 0;
-    await connectTikTok(username);
-}
-
-async function connectTikTok(username) {
-    if (currentTikTokUser !== username) return; // Verificar que seguimos queriendo conectar este usuario
-
-    startKeepAlive();
-    document.getElementById('statusTiktok').className = 'status-value status-active';
-    document.getElementById('statusItemTiktok').classList.add('active');
-    
-    if (tiktokReconnectAttempts === 0) {
-        addChatMessage('SISTEMA', 'TikTok', 'Verificando estado en vivo...');
-    } else {
-        addChatMessage('SISTEMA', 'TikTok', `Reintentando conexión (${tiktokReconnectAttempts}/10)...`);
-    }
-    
-    updateFollowerCounts();
-    
-    try {
-        const res = await fetch('https://tiktok-chat-server.onrender.com/api/check-live', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username })
-        });
-        const data = await res.json();
-
-        if (data.isLive) {
-            tiktokReconnectAttempts = 0; // Resetear intentos si está en vivo
-            
-            if (!tiktokSocket) {
-                addChatMessage('SISTEMA', 'TikTok', '✅ Usuario está en vivo, iniciando conexión...');
-            } else {
-                addChatMessage('SISTEMA', 'TikTok', '✅ Reconectado exitosamente');
-            }
-            
-            await fetch('https://tiktok-chat-server.onrender.com/api/start-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-
-            tiktokSocket = io('https://tiktok-chat-server.onrender.com', {
-                transports: ['websocket', 'polling'],
-                query: { username: username },
-                forceNew: true,
-                reconnection: true,
-                reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
-                reconnectionAttempts: Infinity,
-                timeout: 20000
-            });
-
-            tiktokSocket.on('connect', () => {
-                addChatMessage('SISTEMA', 'TikTok', `🟢 Conectado al chat de @${username}`);
-                tiktokReconnectAttempts = 0;
-                
-                // Ping periódico para mantener la conexión
-                if (tiktokPingInterval) clearInterval(tiktokPingInterval);
-                tiktokPingInterval = setInterval(() => {
-                    if (tiktokSocket && tiktokSocket.connected) {
-                        tiktokSocket.emit('ping');
-                    }
-                }, 25000); // Cada 25 segundos
-            });
-
-            tiktokSocket.on('connect_error', (error) => {
-                console.error('TikTok connection error:', error);
-            });
-
-            tiktokSocket.on('reconnect_attempt', () => {
-                console.log('TikTok intentando reconectar...');
-            });
-
-            tiktokSocket.on('reconnect', () => {
-                addChatMessage('SISTEMA', 'TikTok', '🟢 Reconectado automáticamente');
-            });
-
-            tiktokSocket.on('tiktok-message', (msg) => {
-                if (currentTikTokUser !== username) return;
-                
-                const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
-                if (msgUser && msgUser !== username) return;
-                
-                addChatMessage('TikTok', msg.username || msg.nickname || 'usuario', msg.message || msg.comment || '');
-            });
-
-            tiktokSocket.on('tiktok-like', (msg) => {
-                if (currentTikTokUser !== username) return;
-                
-                const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
-                if (msgUser && msgUser !== username) return;
-                
-                const minLikes = parseInt(document.getElementById('minLikes').value) || 5;
-                const likesEnabled = document.getElementById('enableLikes').checked;
-                
-                if (likesEnabled && msg.likeCount >= minLikes) {
-                    addChatMessage('TikTok', msg.username || 'usuario', `❤️ dio ${msg.likeCount} likes`);
-                }
-            });
-
-            tiktokSocket.on('tiktok-gift', (msg) => {
-                if (currentTikTokUser !== username) return;
-                
-                const msgUser = (msg.streamUsername || msg.uniqueId || '').toLowerCase();
-                if (msgUser && msgUser !== username) return;
-                
-                const giftsEnabled = document.getElementById('enableGifts').checked;
-                
-                if (giftsEnabled) {
-                    addChatMessage('TikTok', msg.username || 'usuario', `🎁 envió ${msg.giftCount}x ${msg.giftName}`);
-                }
-            });
-
-            tiktokSocket.on('disconnect', (reason) => {
-                console.log('TikTok desconectado:', reason);
-                
-                if (tiktokPingInterval) {
-                    clearInterval(tiktokPingInterval);
-                    tiktokPingInterval = null;
-                }
-                
-                if (currentTikTokUser === username && reason !== 'io client disconnect') {
-                    addChatMessage('SISTEMA', 'TikTok', '🔴 Desconectado - intentando reconectar...');
-                    
-                    // Intentar reconexión manual después de 5 segundos
-                    setTimeout(() => {
-                        if (currentTikTokUser === username && tiktokReconnectAttempts < 10) {
-                            tiktokReconnectAttempts++;
-                            connectTikTok(username);
+                        
+                        // Usuario se unió
+                        else if (data.type === 'member' || data.event === 'member') {
+                            const user = data.nickname || data.uniqueId || 'Usuario';
+                            addChatMessage('TIKTOK', user, '👋 Se unió al stream');
                         }
-                    }, 5000);
-                }
-            });
-
-            tiktokSocket.on('error', (err) => {
-                console.error('TikTok socket error:', err);
-            });
-
-            // Verificar conexión cada 30 segundos
-            if (tiktokReconnectInterval) clearInterval(tiktokReconnectInterval);
-            tiktokReconnectInterval = setInterval(() => {
-                if (currentTikTokUser === username && (!tiktokSocket || !tiktokSocket.connected)) {
-                    console.log('TikTok no está conectado, reintentando...');
-                    if (tiktokReconnectAttempts < 10) {
-                        tiktokReconnectAttempts++;
-                        connectTikTok(username);
+                        
+                        // Regalo
+                        else if (data.type === 'gift' || data.event === 'gift') {
+                            const user = data.nickname || data.uniqueId || 'Usuario';
+                            const giftName = data.giftName || 'un regalo';
+                            const count = data.repeatCount || 1;
+                            addChatMessage('TIKTOK', user, `🎁 Envió ${count}x ${giftName}`);
+                        }
+                        
+                        // Like
+                        else if (data.type === 'like' || data.event === 'like') {
+                            const user = data.nickname || data.uniqueId || 'Usuario';
+                            const likes = data.likeCount || 1;
+                            if (likes > 10) { // Solo anunciar likes múltiples
+                                addChatMessage('TIKTOK', user, `❤️ Dio ${likes} likes`);
+                            }
+                        }
+                        
+                        // Follow
+                        else if (data.type === 'follow' || data.event === 'follow') {
+                            const user = data.nickname || data.uniqueId || 'Usuario';
+                            addChatMessage('TIKTOK', user, '⭐ ¡Te está siguiendo!');
+                        }
+                        
+                        // Share
+                        else if (data.type === 'share' || data.event === 'share') {
+                            const user = data.nickname || data.uniqueId || 'Usuario';
+                            addChatMessage('TIKTOK', user, '🔄 Compartió el stream');
+                        }
+                        
+                        // Stream terminado
+                        else if (data.type === 'streamEnd' || data.event === 'streamEnd') {
+                            addChatMessage('SISTEMA', 'TIKTOK', '🔴 El stream ha terminado');
+                            ws.close();
+                            stopReading();
+                        }
+                        
+                    } catch (e) {
+                        console.error('Error procesando mensaje:', e);
                     }
-                }
-            }, 30000);
-
-        } else {
-            addChatMessage('SISTEMA', 'TikTok', '❌ No está en vivo');
-            document.getElementById('statusTiktok').className = 'status-value status-inactive';
-            document.getElementById('statusItemTiktok').classList.remove('active');
-            currentTikTokUser = null;
-            
-            // Verificar de nuevo en 30 segundos si sigue en el mismo usuario
-            setTimeout(() => {
-                if (document.getElementById('tiktokUser').value.trim().toLowerCase() === username) {
-                    addChatMessage('SISTEMA', 'TikTok', '🔄 Verificando si ya está en vivo...');
-                    startTikTok();
-                }
-            }, 30000);
-        }
-    } catch (err) {
-        console.error('Error en TikTok:', err);
-        addChatMessage('SISTEMA', 'ERROR', err.message);
-        document.getElementById('statusTiktok').className = 'status-value status-inactive';
-        document.getElementById('statusItemTiktok').classList.remove('active');
-        
-        // Reintentar en 10 segundos si no hemos excedido los intentos
-        if (currentTikTokUser === username && tiktokReconnectAttempts < 10) {
-            setTimeout(() => {
-                tiktokReconnectAttempts++;
-                connectTikTok(username);
-            }, 10000);
-        } else {
-            currentTikTokUser = null;
-        }
-    }
-}
-
-// --- TWITCH ---
-async function startTwitch() {
-    // Detener conexión anterior si existe
-    if (twitchSocket) {
-        twitchSocket.close();
-        twitchSocket = null;
-        currentTwitchChannel = null;
-    }
-    
-    if (twitchPingInterval) {
-        clearInterval(twitchPingInterval);
-        twitchPingInterval = null;
-    }
-
-    const channel = document.getElementById('twitchChannel').value.trim().toLowerCase();
-    let token = document.getElementById('twitchToken').value.trim();
-    
-    if (!channel) {
-        alert('Falta el nombre del canal de Twitch');
-        return;
-    }
-    
-    if (!token) {
-        alert('Falta el OAuth Token de Twitch');
-        return;
-    }
-
-    if (!token.startsWith('oauth:')) {
-        token = 'oauth:' + token;
-    }
-
-    twitchReconnectAttempts = 0;
-    connectTwitch(channel, token);
-}
-
-function connectTwitch(channel, token) {
-    currentTwitchChannel = channel;
-    startKeepAlive();
-    document.getElementById('statusTwitch').className = 'status-value status-active';
-    document.getElementById('statusItemTwitch').classList.add('active');
-    
-    if (twitchReconnectAttempts === 0) {
-        addChatMessage('SISTEMA', 'Twitch', 'Conectando al chat...');
-    } else {
-        addChatMessage('SISTEMA', 'Twitch', `🔄 Reintentando conexión (${twitchReconnectAttempts}/10)...`);
-    }
-    
-    updateFollowerCounts();
-    
-    try {
-        twitchSocket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-        
-        let isAuthenticated = false;
-        let lastMessageTime = Date.now();
-        
-        twitchSocket.onopen = () => {
-            if (currentTwitchChannel !== channel) {
-                twitchSocket.close();
-                return;
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    addChatMessage('SISTEMA', 'ERROR', 'Error en la conexión. Verifica que el usuario esté en vivo.');
+                    stopReading();
+                };
+                
+                ws.onclose = () => {
+                    addChatMessage('SISTEMA', 'TIKTOK', '⚠️ Desconectado de TikTok');
+                    if (isReading) {
+                        // Intentar reconectar
+                        setTimeout(() => {
+                            if (isReading) {
+                                addChatMessage('SISTEMA', 'TIKTOK', '🔄 Intentando reconectar...');
+                                startTiktokReading();
+                            }
+                        }, 5000);
+                    }
+                };
+                
+                // Guardar referencia al WebSocket
+                window.tiktokWs = ws;
+                
+            } catch (error) {
+                addChatMessage('SISTEMA', 'ERROR', `Error al conectar con TikTok: ${error.message}`);
+                addChatMessage('SISTEMA', 'TIKTOK', 'ℹ️ Asegúrate de ingresar solo el nombre de usuario (sin @)');
+                stopReading();
             }
+        }
 
-            twitchSocket.send(`PASS ${token}`);
-            twitchSocket.send(`NICK justinfan12345`);
-            twitchSocket.send(`JOIN #${channel}`);
-            
-            // Configurar capability para recibir tags
-            twitchSocket.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-            
-            twitchReconnectAttempts = 0;
-            
-            if (twitchReconnectAttempts === 0) {
-                addChatMessage('SISTEMA', 'Twitch', `✅ Conectado al chat de #${channel}`);
-            } else {
-                addChatMessage('SISTEMA', 'Twitch', '✅ Reconectado exitosamente');
-            }
-        };
-
-        twitchSocket.onmessage = (event) => {
-            if (currentTwitchChannel !== channel) return;
-
-            const message = event.data;
-            lastMessageTime = Date.now();
-            
-            // Responder a PING
-            if (message.startsWith('PING')) {
-                twitchSocket.send('PONG :tmi.twitch.tv');
+        // Iniciar lectura
+        async function startReading(platform) {
+            if (isReading) {
+                alert('Ya hay una lectura en progreso');
                 return;
             }
             
-            // Verificar autenticación exitosa
-            if (message.includes('001')) {
-                isAuthenticated = true;
-            }
-            
-            if (message.includes('PRIVMSG')) {
-                if (!message.includes(`#${channel} :`)) return;
-
-                const parts = message.split('PRIVMSG');
-                if (parts.length < 2) return;
-                
-                const userMatch = message.match(/:(.+)!/);
-                const username = userMatch ? userMatch[1] : 'usuario';
-                
-                const msgMatch = parts[1].match(/:(.*)/);
-                const msg = msgMatch ? msgMatch[1].trim() : '';
-                
-                if (msg) {
-                    addChatMessage('Twitch', username, msg);
+            // Validar API Keys
+            if (platform === 'youtube' || platform === 'both') {
+                if (!elements.youtubeKey.value.trim()) {
+                    alert('Por favor ingresa tu YouTube API Key\n\nPasos:\n1. Ve a console.cloud.google.com\n2. Crea un proyecto\n3. Habilita YouTube Data API v3\n4. Crea credenciales (API Key)');
+                    return;
                 }
             }
-        };
-
-        twitchSocket.onerror = (error) => {
-            console.error('Twitch WebSocket error:', error);
-            if (currentTwitchChannel === channel) {
-                addChatMessage('SISTEMA', 'Twitch', '❌ Error de conexión');
-            }
-        };
-
-        twitchSocket.onclose = () => {
-            if (twitchPingInterval) {
-                clearInterval(twitchPingInterval);
-                twitchPingInterval = null;
-            }
             
-            if (currentTwitchChannel === channel) {
-                addChatMessage('SISTEMA', 'Twitch', '🔴 Desconectado - reconectando en 5s...');
-                document.getElementById('statusTwitch').className = 'status-value status-inactive';
-                document.getElementById('statusItemTwitch').classList.remove('active');
-                
-                // Reintentar conexión
-                if (twitchReconnectAttempts < 10) {
-                    setTimeout(() => {
-                        twitchReconnectAttempts++;
-                        connectTwitch(channel, token);
-                    }, 5000);
+            if (platform === 'tiktok' || platform === 'both') {
+                if (!elements.tiktokKey.value.trim()) {
+                    alert('Por favor ingresa tu nombre de usuario de TikTok (sin el @)\n\nEjemplo: si tu usuario es @juan123, ingresa solo: juan123');
+                    return;
                 }
             }
-        };
-        
-        // Ping cada 60 segundos para mantener la conexión
-        twitchPingInterval = setInterval(() => {
-            if (twitchSocket && twitchSocket.readyState === WebSocket.OPEN) {
-                twitchSocket.send('PING :tmi.twitch.tv');
+            
+            isReading = true;
+            elements.btnYoutube.disabled = true;
+            elements.btnTiktok.disabled = true;
+            elements.btnBoth.disabled = true;
+            elements.btnStop.disabled = false;
+            
+            elements.chatContainer.innerHTML = '';
+            
+            if (platform === 'youtube' || platform === 'both') {
+                elements.status.textContent = '🟡 Estado: Verificando YouTube...';
+                elements.status.className = 'status active';
+                addChatMessage('SISTEMA', 'SISTEMA', 'Verificando estado de YouTube...');
+                await startYoutubeReading();
             }
             
-            // Verificar si hace más de 90 segundos sin mensajes
-            const timeSinceLastMessage = Date.now() - lastMessageTime;
-            if (timeSinceLastMessage > 90000 && currentTwitchChannel === channel) {
-                console.log('Twitch: Sin actividad por 90s, reconectando...');
-                twitchSocket.close();
+            if (platform === 'tiktok' || platform === 'both') {
+                elements.status.textContent = '🟡 Estado: Verificando TikTok...';
+                elements.status.className = 'status active';
+                addChatMessage('SISTEMA', 'SISTEMA', 'Verificando estado de TikTok...');
+                await startTiktokReading();
             }
-        }, 60000);
-
-    } catch (err) {
-        addChatMessage('SISTEMA', 'ERROR', 'Twitch: ' + err.message);
-        document.getElementById('statusTwitch').className = 'status-value status-inactive';
-        document.getElementById('statusItemTwitch').classList.remove('active');
-        
-        // Reintentar en 10 segundos
-        if (currentTwitchChannel === channel && twitchReconnectAttempts < 10) {
-            setTimeout(() => {
-                twitchReconnectAttempts++;
-                connectTwitch(channel, token);
-            }, 10000);
-        } else {
-            currentTwitchChannel = null;
         }
-    }
-}
 
-// --- DETENER ---
-function stopAll() {
-    // Detener keep alive
-    stopKeepAlive();
+        // Detener lectura
+        function stopReading() {
+            isReading = false;
+            
+            if (youtubeInterval) {
+                clearTimeout(youtubeInterval);
+                youtubeInterval = null;
+            }
+            
+            if (window.tiktokWs) {
+                window.tiktokWs.close();
+                window.tiktokWs = null;
+            }
+            
+            speechSynthesis.cancel();
+            messageQueue = [];
+            
+            elements.btnYoutube.disabled = false;
+            elements.btnTiktok.disabled = false;
+            elements.btnBoth.disabled = false;
+            elements.btnStop.disabled = true;
+            
+            elements.status.textContent = '🔴 Estado: Detenido';
+            elements.status.className = 'status';
+            
+            addChatMessage('SISTEMA', 'SISTEMA', 'Lectura detenida');
+        }
 
-    // Limpiar YouTube
-    if (youtubeInterval) {
-        clearTimeout(youtubeInterval);
-        youtubeInterval = null;
-    }
-    currentYouTubeChatId = null;
-    youtubeReconnectAttempts = 0;
+        // Event Listeners
+        elements.btnYoutube.addEventListener('click', () => startReading('youtube'));
+        elements.btnTiktok.addEventListener('click', () => startReading('tiktok'));
+        elements.btnBoth.addEventListener('click', () => startReading('both'));
+        elements.btnStop.addEventListener('click', stopReading);
+        elements.btnTest.addEventListener('click', () => {
+            speak('¡Hola! Esta es una prueba de voz. El sistema está funcionando correctamente.');
+        });
 
-    // Limpiar TikTok
-    if (tiktokSocket) {
-        tiktokSocket.disconnect();
-        tiktokSocket = null;
-    }
-    if (tiktokReconnectInterval) {
-        clearInterval(tiktokReconnectInterval);
-        tiktokReconnectInterval = null;
-    }
-    if (tiktokPingInterval) {
-        clearInterval(tiktokPingInterval);
-        tiktokPingInterval = null;
-    }
-    currentTikTokUser = null;
-    tiktokReconnectAttempts = 0;
-
-    // Limpiar Twitch
-    if (twitchSocket) {
-        twitchSocket.close();
-        twitchSocket = null;
-    }
-    if (twitchPingInterval) {
-        clearInterval(twitchPingInterval);
-        twitchPingInterval = null;
-    }
-    currentTwitchChannel = null;
-    twitchReconnectAttempts = 0;
-
-    // Limpiar voz y mensajes
-    speechSynthesis.cancel();
-    messageQueue = [];
-    userMessageCache.clear();
-    isSpeaking = false;
-    
-    // Resetear UI
-    document.getElementById('statusYoutube').className = 'status-value status-inactive';
-    document.getElementById('statusTiktok').className = 'status-value status-inactive';
-    document.getElementById('statusTwitch').className = 'status-value status-inactive';
-    document.getElementById('statusItemYoutube').classList.remove('active');
-    document.getElementById('statusItemTiktok').classList.remove('active');
-    document.getElementById('statusItemTwitch').classList.remove('active');
-    document.getElementById('chatContainer').innerHTML = '';
-    messageCount = 0;
-    document.getElementById('messageCount').textContent = '0';
-    
-    addChatMessage('SISTEMA', 'SISTEMA', '⏹️ Todas las conexiones detenidas y limpiadas');
-}
-
-// --- EVENTOS BOTONES ---
-document.getElementById('btnYoutube').onclick = startYouTube;
-document.getElementById('btnTiktok').onclick = startTikTok;
-document.getElementById('btnTwitch').onclick = startTwitch;
-document.getElementById('btnAll').onclick = () => {
-    startYouTube();
-    startTikTok();
-    startTwitch();
-};
-document.getElementById('btnStop').onclick = stopAll;
-</script>
+        // Limpiar al cerrar
+        window.addEventListener('beforeunload', () => {
+            stopReading();
+        });
+    </script>
 </body>
 </html>
