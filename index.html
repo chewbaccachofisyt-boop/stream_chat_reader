@@ -758,155 +758,114 @@
             }
         }
 
-        // Lectura REAL de Twitch usando TMI.js (API de IRC) - OPTIMIZADO
+        // Lectura REAL de Twitch usando TMI.js (API de IRC) - ULTRA RÁPIDO
         async function startTwitchReading() {
             const channel = elements.twitchKey.value.trim().toLowerCase();
             
-            addChatMessage('SISTEMA', 'TWITCH', '🔄 Conectando con Twitch...');
+            // Confirmación inmediata
+            addChatMessage('SISTEMA', 'TWITCH', `✅ Conectando a: ${channel}`);
+            elements.status.textContent = '🟢 Estado: Conectando Twitch...';
+            elements.status.className = 'status active';
             
             try {
-                // Usar WebSocket IRC de Twitch
                 twitchWs = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
                 
-                // Timeout de conexión
+                let connected = false;
+                
                 const connectionTimeout = setTimeout(() => {
-                    if (twitchWs && twitchWs.readyState !== WebSocket.OPEN) {
-                        addChatMessage('SISTEMA', 'ERROR', 'Tiempo de espera agotado para Twitch');
-                        twitchWs.close();
+                    if (!connected) {
+                        addChatMessage('SISTEMA', 'TWITCH', '❌ Timeout - Verifica el nombre del canal');
+                        if (twitchWs) twitchWs.close();
                     }
-                }, 10000); // 10 segundos máximo
+                }, 8000);
                 
                 twitchWs.onopen = () => {
-                    clearTimeout(connectionTimeout);
-                    // Conectar de forma anónima
-                    twitchWs.send('NICK justinfan' + Math.floor(Math.random() * 100000));
+                    const nick = 'justinfan' + Math.floor(Math.random() * 100000);
+                    twitchWs.send(`NICK ${nick}`);
                     twitchWs.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                     twitchWs.send(`JOIN #${channel}`);
                     
-                    // Confirmación rápida
-                    addChatMessage('SISTEMA', 'TWITCH', `✅ Conectado al canal: ${channel}`);
+                    // Asumir conexión exitosa inmediatamente
+                    connected = true;
+                    clearTimeout(connectionTimeout);
+                    addChatMessage('SISTEMA', 'TWITCH', `✅ Conectado y escuchando mensajes`);
                     elements.status.textContent = '🟢 Estado: Leyendo Twitch';
-                    elements.status.className = 'status active';
                 };
                 
                 twitchWs.onmessage = (event) => {
                     const message = event.data;
                     
-                    // Responder a PING inmediatamente
                     if (message.startsWith('PING')) {
                         twitchWs.send('PONG :tmi.twitch.tv');
                         return;
                     }
                     
-                    // Procesar mensajes de chat
                     if (message.includes('PRIVMSG')) {
                         const userMatch = message.match(/display-name=([^;]+)/);
                         const textMatch = message.match(/PRIVMSG #\w+ :(.+)/);
                         
                         if (userMatch && textMatch) {
-                            const username = userMatch[1];
-                            const text = textMatch[1];
-                            addChatMessage('TWITCH', username, text);
+                            addChatMessage('TWITCH', userMatch[1], textMatch[1]);
                         }
                     }
                 };
                 
-                twitchWs.onerror = (error) => {
+                twitchWs.onerror = () => {
                     clearTimeout(connectionTimeout);
-                    console.error('Twitch WebSocket error:', error);
-                    addChatMessage('SISTEMA', 'ERROR', 'Error al conectar con Twitch. Verifica el nombre del canal.');
+                    addChatMessage('SISTEMA', 'TWITCH', '❌ Error de conexión');
                 };
                 
                 twitchWs.onclose = () => {
                     clearTimeout(connectionTimeout);
-                    addChatMessage('SISTEMA', 'TWITCH', '⚠️ Desconectado de Twitch');
+                    if (!connected) {
+                        addChatMessage('SISTEMA', 'TWITCH', '❌ No se pudo conectar');
+                    }
                 };
                 
             } catch (error) {
-                addChatMessage('SISTEMA', 'ERROR', `Error: ${error.message}`);
+                addChatMessage('SISTEMA', 'ERROR', `Twitch: ${error.message}`);
             }
         }
 
-        // Lectura REAL de Kick - OPTIMIZADO Y SIMPLIFICADO
+        // Lectura de Kick - MÉTODO DIRECTO Y SIMPLE
         async function startKickReading() {
             const channel = elements.kickKey.value.trim().toLowerCase();
             
-            addChatMessage('SISTEMA', 'KICK', '🔄 Conectando con Kick...');
+            addChatMessage('SISTEMA', 'KICK', `✅ Iniciando para: ${channel}`);
+            elements.status.textContent = '🟢 Estado: Iniciando Kick...';
+            elements.status.className = 'status active';
             
-            try {
-                // Usar Kick-Puppeteer proxy público (más confiable)
-                const wsUrl = `wss://kick-chat-proxy.onrender.com/chat/${channel}`;
-                
-                kickWs = new WebSocket(wsUrl);
-                
-                // Timeout
-                const connectionTimeout = setTimeout(() => {
-                    if (kickWs && kickWs.readyState !== WebSocket.OPEN) {
-                        addChatMessage('SISTEMA', 'KICK', '⚠️ Usando método alternativo...');
-                        kickWs.close();
-                        startKickAlternative(channel);
-                    }
-                }, 8000);
-                
-                kickWs.onopen = () => {
-                    clearTimeout(connectionTimeout);
-                    addChatMessage('SISTEMA', 'KICK', `✅ Conectado al canal: ${channel}`);
-                    elements.status.textContent = '🟢 Estado: Leyendo Kick';
-                    elements.status.className = 'status active';
-                };
-                
-                kickWs.onmessage = (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        
-                        if (data.type === 'message' || data.event === 'message') {
-                            const username = data.username || data.sender?.username || 'Usuario';
-                            const message = data.message || data.content || '';
-                            
-                            if (message) {
-                                addChatMessage('KICK', username, message);
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error procesando mensaje de Kick:', e);
-                    }
-                };
-                
-                kickWs.onerror = () => {
-                    clearTimeout(connectionTimeout);
-                    addChatMessage('SISTEMA', 'KICK', '⚠️ Error de conexión, probando método alternativo...');
-                    startKickAlternative(channel);
-                };
-                
-                kickWs.onclose = () => {
-                    clearTimeout(connectionTimeout);
-                    addChatMessage('SISTEMA', 'KICK', '⚠️ Desconectado de Kick');
-                };
-                
-            } catch (error) {
-                addChatMessage('SISTEMA', 'ERROR', `Error: ${error.message}`);
-                startKickAlternative(channel);
-            }
-        }
-        
-        // Método alternativo para Kick usando polling
-        function startKickAlternative(channel) {
-            addChatMessage('SISTEMA', 'KICK', '📡 Usando modo polling (actualización cada 5 segundos)...');
-            
-            let lastMessageId = null;
+            // Usar método de polling directamente (más confiable)
+            let lastMessageId = 0;
+            let pollCount = 0;
             
             const pollMessages = async () => {
                 if (!isReading) return;
                 
                 try {
-                    const response = await fetch(`https://kick.com/api/v2/channels/${channel}/messages`);
-                    if (!response.ok) throw new Error('Canal no encontrado');
+                    const url = `https://kick.com/api/v2/channels/${channel}/messages`;
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        if (pollCount === 0) {
+                            addChatMessage('SISTEMA', 'KICK', '❌ Canal no encontrado o sin mensajes recientes');
+                        }
+                        return;
+                    }
                     
                     const data = await response.json();
                     
+                    if (pollCount === 0) {
+                        addChatMessage('SISTEMA', 'KICK', `✅ Conectado (actualiza cada 5 seg)`);
+                        elements.status.textContent = '🟢 Estado: Leyendo Kick';
+                    }
+                    
                     if (data.data && Array.isArray(data.data)) {
-                        data.data.forEach(msg => {
-                            if (!lastMessageId || msg.id > lastMessageId) {
+                        // Ordenar por ID y procesar nuevos mensajes
+                        const sortedMessages = data.data.sort((a, b) => a.id - b.id);
+                        
+                        sortedMessages.forEach(msg => {
+                            if (msg.id > lastMessageId) {
                                 const username = msg.sender?.username || 'Usuario';
                                 const message = msg.content || '';
                                 if (message) {
@@ -915,20 +874,24 @@
                                 lastMessageId = msg.id;
                             }
                         });
-                        
-                        if (!lastMessageId) {
-                            addChatMessage('SISTEMA', 'KICK', '✅ Conectado al canal (modo polling)');
-                        }
                     }
                     
-                    // Siguiente polling en 5 segundos
-                    setTimeout(pollMessages, 5000);
+                    pollCount++;
                     
                 } catch (error) {
-                    addChatMessage('SISTEMA', 'ERROR', `Kick: ${error.message}`);
+                    if (pollCount === 0) {
+                        addChatMessage('SISTEMA', 'KICK', `❌ Error: ${error.message}`);
+                    }
+                    console.error('Kick error:', error);
+                }
+                
+                // Siguiente polling
+                if (isReading) {
+                    setTimeout(pollMessages, 5000);
                 }
             };
             
+            // Iniciar inmediatamente
             pollMessages();
         }
         async function startTiktokReading() {
